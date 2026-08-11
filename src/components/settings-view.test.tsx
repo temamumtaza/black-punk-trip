@@ -61,13 +61,18 @@ describe("SettingsView invite actions", () => {
     }));
   });
 
-  it("only exposes permanent trip management to its owner", () => {
+  it("lets a trip admin delete the trip while keeping edits owner-only", () => {
     renderSettings();
     expect(screen.getByRole("button", { name: "Edit" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Hapus trip" })).toBeTruthy();
 
     cleanup();
-    renderSettings({ isOwner: false });
+    renderSettings({ isOwner: false, isAdmin: true });
+    expect(screen.getByRole("button", { name: "Hapus trip" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+
+    cleanup();
+    renderSettings({ isOwner: false, isAdmin: false });
     expect(screen.queryByRole("button", { name: "Hapus trip" })).toBeNull();
   });
 });

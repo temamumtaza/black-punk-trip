@@ -195,10 +195,21 @@ a { color: inherit; }
 .pwa-gate-footnote { margin: 22px 0 0; color: var(--muted); font-size: 10px; text-align: center; }
 
 .app-shell { display: flex; min-width: 0; min-height: 100svh; overflow-x: clip; touch-action: pan-y; }
-.pull-refresh-shell { min-width: 0; min-height: 100svh; overscroll-behavior-y: contain; }
-.pull-refresh-indicator { position: fixed; z-index: 4; top: 74px; left: calc(50% + 122px); display: grid; width: 31px; height: 31px; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: var(--cream-bright); color: var(--muted); box-shadow: 0 6px 18px rgba(28, 28, 28, .12); opacity: 0; pointer-events: none; transition: opacity .14s ease, color .14s ease; }
-.pull-refresh-shell.is-pulling .pull-refresh-indicator { opacity: 1; }
-.pull-refresh-indicator.is-ready { color: var(--charcoal); border-color: var(--line-strong); }
+.pull-refresh-shell { --pull-space: 0px; min-width: 0; min-height: 100svh; overscroll-behavior-y: contain; }
+.pull-refresh-shell .app-content { transition: padding-top .2s cubic-bezier(.2, .8, .2, 1); }
+.pull-refresh-shell.is-pulling .app-content { padding-top: calc(66px + var(--pull-space)); }
+.pull-refresh-lane { position: fixed; z-index: 7; top: 66px; right: 0; left: 245px; display: grid; height: var(--pull-space); place-items: center; overflow: hidden; background: var(--cream); pointer-events: none; transition: height .2s cubic-bezier(.2, .8, .2, 1); }
+.pull-refresh-indicator { display: inline-flex; height: 34px; align-items: center; gap: 7px; padding: 3px 11px 3px 3px; border: 1px solid var(--line); border-radius: 9999px; background: rgba(252, 251, 248, .96); color: var(--muted); box-shadow: 0 8px 20px rgba(28, 28, 28, .1); transition: color .16s ease, border-color .16s ease, background .16s ease; }
+.pull-refresh-ring { position: relative; display: grid; width: 26px; height: 26px; place-items: center; border-radius: 50%; background: conic-gradient(var(--charcoal) calc(var(--pull-progress) * 1turn), var(--wash) 0); color: var(--charcoal); }
+.pull-refresh-ring::before { position: absolute; width: 20px; height: 20px; border-radius: 50%; background: var(--cream-bright); content: ""; }
+.pull-refresh-ring svg { position: relative; z-index: 1; }
+.pull-refresh-label { font-size: 10px; white-space: nowrap; }
+.pull-refresh-indicator.is-ready { border-color: var(--line-strong); color: var(--charcoal); }
+.pull-refresh-indicator.is-refreshing .pull-refresh-ring { background: var(--charcoal); color: var(--cream-bright); }
+.pull-refresh-indicator.is-success { border-color: rgba(53, 99, 66, .35); background: rgba(245, 249, 245, .98); color: var(--green); }
+.pull-refresh-indicator.is-success .pull-refresh-ring { background: var(--green); color: var(--cream-bright); }
+.pull-refresh-indicator.is-error { border-color: rgba(155, 78, 60, .3); background: rgba(253, 247, 245, .98); color: var(--red); }
+.pull-refresh-indicator.is-error .pull-refresh-ring { background: var(--red); color: var(--cream-bright); }
 .pull-refresh-indicator .is-spinning { animation: pull-refresh-spin .72s linear infinite; }
 @keyframes pull-refresh-spin { to { transform: rotate(360deg); } }
 .app-rail { position: fixed; z-index: 3; display: flex; width: 245px; height: 100svh; flex-direction: column; padding: 24px 17px 18px; border-right: 1px solid var(--line); background: rgba(247, 244, 237, .96); }
@@ -244,6 +255,8 @@ a { color: inherit; }
 .icon-btn { display: inline-grid; width: 44px; height: 44px; place-items: center; border: 1px solid transparent; border-radius: 9999px; background: transparent; color: var(--muted); }
 .icon-btn:hover { border-color: var(--line); background: var(--wash); color: var(--charcoal); }
 .app-main { width: min(1120px, calc(100% - 92px)); min-width: 0; margin: 0 auto; padding: 20px 0 80px; }
+.pull-refresh-shell.is-pulling .app-main { position: relative; }
+.pull-refresh-shell.is-pulling .app-main::before { position: absolute; top: 0; left: 50%; width: calc(100vw - 245px); height: 1px; background: var(--line); content: ""; transform: translateX(-50%); }
 .view-stack, .panel, .form-layout, .content-grid, .detail-grid, .settlement-layout, .settings-grid { min-width: 0; max-width: 100%; }
 .app-alert { margin: 0 0 20px; padding: 10px 12px; border: 1px solid rgba(155, 78, 60, .24); border-radius: 6px; background: rgba(155, 78, 60, .06); color: var(--red); font-size: 12px; }
 .view-stack { animation: view-in .24s ease both; }
@@ -619,9 +632,10 @@ a { color: inherit; }
   .story-section { padding: 95px 0 100px; }
   .app-rail { width: 208px; }
   .app-content { width: calc(100% - 208px); margin-left: 208px; }
-  .pull-refresh-indicator { left: calc(50% + 104px); }
+  .pull-refresh-lane { left: 208px; }
   .app-topbar { left: 208px; padding-inline: 28px; }
   .app-main { width: min(100% - 56px, 700px); }
+  .pull-refresh-shell.is-pulling .app-main::before { width: calc(100vw - 208px); }
   .onboarding-entry-content { width: min(100%, 760px); }
   .onboarding-slide { height: min(580px, calc(100svh - 145px)); }
   .content-grid, .detail-grid, .settlement-layout, .form-layout { grid-template-columns: 1fr; }
@@ -680,7 +694,8 @@ a { color: inherit; }
   .auth-heading h1 { font-size: 46px; }
   .app-rail { display: none; }
   .app-content { width: 100%; margin-left: 0; padding: 61px 0 calc(65px + env(safe-area-inset-bottom)); }
-  .pull-refresh-indicator { top: 66px; left: 50%; }
+  .pull-refresh-shell.is-pulling .app-content { padding-top: calc(61px + var(--pull-space)); }
+  .pull-refresh-lane { top: 61px; left: 0; }
   .app-topbar { left: 0; height: 61px; padding: 0 16px; }
   .mobile-trip-switcher, .mobile-trip-name { display: flex; }
   .app-header-mark { width: 27px; height: 27px; margin-right: 12px; }
@@ -691,6 +706,7 @@ a { color: inherit; }
   .topbar-actions { gap: 4px; }
   .sync-pill { display: none; }
   .app-main { width: 100%; padding: 12px 14px 14px; }
+  .pull-refresh-shell.is-pulling .app-main::before { width: 100vw; }
   .mobile-tabs { position: fixed; z-index: 5; right: 0; bottom: 0; left: 0; display: grid; grid-template-columns: repeat(4, 1fr); padding: 6px 8px calc(6px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: rgba(247, 244, 237, .97); backdrop-filter: blur(10px); }
   .mobile-tab { display: flex; min-height: 47px; flex-direction: column; align-items: center; justify-content: center; gap: 3px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 9px; }
   .mobile-tab.is-active { background: var(--wash); color: var(--charcoal); }

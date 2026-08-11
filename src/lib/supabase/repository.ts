@@ -89,6 +89,8 @@ function assertNoError(error: { message: string; code?: string } | null): assert
           ? "Layanan backend belum siap untuk perintah ini. Muat ulang lalu coba lagi."
           : error.code === "PGRST200"
             ? "Relasi data trip belum bisa dibaca. Muat ulang lalu coba lagi."
+          : error.code === "401" || error.code === "PGRST301" || /jwt|token.*expired|invalid.*token|not authenticated/i.test(error.message)
+            ? "Sesi login sudah berakhir. Masuk lagi untuk melanjutkan."
           : /failed to fetch|network|fetch failed|timeout|timed out/i.test(error.message)
             ? "Koneksi ke Supabase sedang lambat atau terputus. Data belum berubah—coba lagi."
             : "Permintaan belum selesai. Data belum berubah—coba lagi beberapa detik.";

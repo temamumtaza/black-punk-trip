@@ -28,5 +28,5 @@ export default async function AppPage({ searchParams }: { searchParams: Promise<
   const trip = Array.isArray(params.trip) ? params.trip[0] : params.trip;
   const code = Array.isArray(params.code) ? params.code[0] : params.code;
   const expense = Array.isArray(params.expense) ? params.expense[0] : params.expense;
-  return <PwaMobileGate><TripApp initialView={normalizeView(params.view)} initialUserId={userResponse.data.user.id} initialTripId={trip} initialJoinCode={code} initialExpenseId={expense} /></PwaMobileGate>;
+  return <PwaMobileGate><TripApp initialView={normalizeView(params.view)} initialTripId={trip} initialJoinCode={code} initialExpenseId={expense} /></PwaMobileGate>;
 }

@@ -36,11 +36,11 @@ import {
   uploadReceipt,
 } from "@/lib/supabase/repository";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { getBrowserSessionUserId } from "@/lib/supabase/session";
 import type { AppState, Expense, MemberRole, Profile, SettlementPreview, TripMember } from "@/lib/types";
 
 interface TripAppProps {
   initialView: AppView;
-  initialUserId?: string;
   initialTripId?: string;
   initialJoinCode?: string;
   initialExpenseId?: string;
@@ -60,13 +60,14 @@ function errorMessage(error: unknown) {
   return "Koneksi belum siap. Coba lagi.";
 }
 
-export function TripApp({ initialView, initialUserId, initialTripId, initialJoinCode, initialExpenseId }: TripAppProps) {
+export function TripApp({ initialView, initialTripId, initialJoinCode, initialExpenseId }: TripAppProps) {
   const router = useRouter();
   const [state, setState] = useState<AppState | null>(null);
   const [status, setStatus] = useState<LoadStatus>("loading");
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
   const [activeTripId, setActiveTripId] = useState(initialTripId ?? "");
+  const [requestedTripId, setRequestedTripId] = useState(initialTripId ?? "");
   const [view, setView] = useState<AppView>(initialView);
   const [selectedExpenseId, setSelectedExpenseId] = useState<string | null>(initialExpenseId ?? null);
   const [currentUserId, setCurrentUserId] = useState("");
@@ -79,7 +80,6 @@ export function TripApp({ initialView, initialUserId, initialTripId, initialJoin
   const [isSavingTrip, setIsSavingTrip] = useState(false);
   const [isDeletingTrip, setIsDeletingTrip] = useState(false);
   const loadInFlight = useRef<Promise<void> | null>(null);
-  const initialUserIdRef = useRef(initialUserId ?? "");
 
   const client = getSupabaseBrowserClient();
 
@@ -93,23 +93,36 @@ export function TripApp({ initialView, initialUserId, initialTripId, initialJoin
         return;
       }
 
-      let userId = initialUserIdRef.current;
+      let userId = await getBrowserSessionUserId(client);
       if (!userId) {
-        const userResponse = await client.auth.getUser();
-        if (userResponse.error || !userResponse.data.user) {
+        // Clear a stale browser cookie before navigating so the server login
+        // page cannot immediately redirect back to this broken app shell.
+        await client.auth.signOut({ scope: "local" }).catch(() => undefined);
+        const next = `${window.location.pathname}${window.location.search}`;
+        router.replace(`/login?next=${encodeURIComponent(next)}`);
+        return;
+      }
+
+      let nextState: AppState;
+      try {
+        nextState = await loadAppState(client, userId);
+      } catch (loadError) {
+        const isExpiredSession = loadError instanceof RepositoryError && ["401", "PGRST301"].includes(loadError.code ?? "");
+        if (!isExpiredSession) throw loadError;
+
+        const refreshed = await client.auth.refreshSession();
+        userId = refreshed.data.session?.user.id ?? "";
+        if (!userId) {
+          await client.auth.signOut({ scope: "local" }).catch(() => undefined);
           const next = `${window.location.pathname}${window.location.search}`;
           router.replace(`/login?next=${encodeURIComponent(next)}`);
           return;
         }
-        userId = userResponse.data.user.id;
+        nextState = await loadAppState(client, userId);
       }
-
-      const nextState = await loadAppState(client, userId);
       setCurrentUserId(userId);
       setState(nextState);
-      setActiveTripId((current) => initialTripId && !nextState.trips.some((trip) => trip.id === initialTripId)
-        ? initialTripId
-        : current && nextState.trips.some((trip) => trip.id === current) ? current : nextState.trips[0]?.id ?? "");
+      setActiveTripId((current) => current && nextState.trips.some((trip) => trip.id === current) ? current : nextState.trips[0]?.id ?? "");
       setStatus("ready");
       setError("");
     })();
@@ -155,6 +168,7 @@ export function TripApp({ initialView, initialUserId, initialTripId, initialJoin
 
   function navigate(nextView: AppView, nextTripId = activeTripId, nextExpenseId = selectedExpenseId ?? "") {
     setView(nextView);
+    setRequestedTripId(nextTripId);
     const query = nextTripId ? `&trip=${encodeURIComponent(nextTripId)}` : "";
     const expenseQuery = nextExpenseId && (nextView === "detail" || nextView === "edit-expense") ? `&expense=${encodeURIComponent(nextExpenseId)}` : "";
     const nextUrl = `/app?view=${nextView}${query}${expenseQuery}`;
@@ -169,6 +183,12 @@ export function TripApp({ initialView, initialUserId, initialTripId, initialJoin
     setActionError("");
     await load();
     if (nextTripId) setActiveTripId(nextTripId);
+  }
+
+  async function returnToLogin() {
+    if (client) await client.auth.signOut({ scope: "local" }).catch(() => undefined);
+    const next = `${window.location.pathname}${window.location.search}`;
+    router.replace(`/login?next=${encodeURIComponent(next)}`);
   }
 
   async function runAction(action: () => Promise<void>) {
@@ -398,8 +418,8 @@ export function TripApp({ initialView, initialUserId, initialTripId, initialJoin
   }
 
   async function handleDeleteTrip(): Promise<void> {
-    if (!client || !trip || trip.createdBy !== currentUserId) {
-      setActionError("Hanya pemilik trip yang dapat menghapus trip.");
+    if (!client || !trip || currentMember?.role !== "admin") {
+      setActionError("Hanya admin trip yang dapat menghapus trip.");
       return;
     }
     if (!window.confirm(`Hapus trip “${trip.name}”? Semua catatan, settlement, dan bukti pembayaran akan dihapus permanen.`)) return;
@@ -453,7 +473,7 @@ export function TripApp({ initialView, initialUserId, initialTripId, initialJoin
   }, [client]);
 
   const derived = useMemo(() => {
-    const requestedTripMissing = Boolean(state && initialTripId && activeTripId === initialTripId && !state.trips.some((item) => item.id === initialTripId));
+    const requestedTripMissing = Boolean(state && requestedTripId && activeTripId === requestedTripId && !state.trips.some((item) => item.id === requestedTripId));
     const trip = requestedTripMissing ? undefined : state?.trips.find((item) => item.id === activeTripId) ?? state?.trips[0];
     const membersByTripId = new Map<string, AppState["tripMembers"]>();
     const expensesByTripId = new Map<string, Expense[]>();
@@ -517,7 +537,7 @@ export function TripApp({ initialView, initialUserId, initialTripId, initialJoin
       ledgersByTrip,
       totalsByTrip,
     };
-  }, [activeTripId, currentUserId, initialTripId, selectedExpenseId, state]);
+  }, [activeTripId, currentUserId, requestedTripId, selectedExpenseId, state]);
   const {
     requestedTripMissing,
     trip,
@@ -537,9 +557,9 @@ export function TripApp({ initialView, initialUserId, initialTripId, initialJoin
     totalsByTrip,
   } = derived;
 
-  if (!client) return <AppError message="Supabase belum dikonfigurasi untuk environment ini." onRetry={() => window.location.reload()} onLogin={() => router.push("/login")} />;
+  if (!client) return <AppError message="Supabase belum dikonfigurasi untuk environment ini." onRetry={() => window.location.reload()} onLogin={returnToLogin} />;
   if (status === "loading") return <AppLoading />;
-  if (status === "error" || !state || !currentProfile) return <AppError message={error || "Akun belum siap."} onRetry={() => load().catch((loadError) => setError(errorMessage(loadError)))} onLogin={() => router.push("/login")} />;
+  if (status === "error" || !state || !currentProfile) return <AppError message={error || "Akun belum siap."} onRetry={() => load().catch((loadError) => setError(errorMessage(loadError)))} onLogin={returnToLogin} />;
 
   if (requestedTripMissing) {
     return <TripNotFoundView onBack={() => { setActiveTripId(state.trips[0]?.id ?? ""); navigate("trips", state.trips[0]?.id ?? ""); }} />;
