@@ -767,7 +767,8 @@ a { color: inherit; }
   .manual-member-panel { display: flex; flex-direction: column; align-items: stretch; gap: 13px; margin-bottom: 12px; }
   .manual-member-form { align-items: stretch; flex-direction: column; }
   .manual-member-form .btn { width: 100%; justify-content: center; }
-  .invite-members-panel { display: flex; gap: 15px; }
+  .invite-members-panel { display: flex; flex-direction: column; align-items: stretch; gap: 15px; }
+  .invite-members-copy > p:not(.eyebrow) { max-width: none; }
   .invite-share-button { width: 100%; justify-content: center; }
   .invite-members-meta { width: 100%; gap: 7px; padding-top: 11px; }
   .invite-members-meta > strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

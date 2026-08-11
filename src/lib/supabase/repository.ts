@@ -244,6 +244,26 @@ export async function updateOwnedTrip(client: Client, tripId: string, input: { n
 }
 
 export async function deleteOwnedTrip(client: Client, tripId: string) {
+  const bucket = client.storage.from("trip-receipts");
+  const receiptPaths: string[] = [];
+  let offset = 0;
+
+  // Storage objects have a protective database trigger, so they must be
+  // removed through the Storage API before the relational trip delete.
+  while (true) {
+    const listed = await bucket.list(tripId, { limit: 1000, offset, sortBy: { column: "name", order: "asc" } });
+    assertNoError(listed.error);
+    const objects = listed.data ?? [];
+    receiptPaths.push(...objects.filter((object) => object.id).map((object) => `${tripId}/${object.name}`));
+    if (objects.length < 1000) break;
+    offset += objects.length;
+  }
+
+  for (let start = 0; start < receiptPaths.length; start += 1000) {
+    const removed = await bucket.remove(receiptPaths.slice(start, start + 1000));
+    assertNoError(removed.error);
+  }
+
   const response = await client.rpc("delete_owned_trip", { p_trip_id: tripId });
   assertNoError(response.error);
 }

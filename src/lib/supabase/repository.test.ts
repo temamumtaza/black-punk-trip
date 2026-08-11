@@ -92,10 +92,13 @@ describe("manual trip members", () => {
 });
 
 describe("trip owner mutations", () => {
-  it("uses owner-only RPCs for updating and deleting a trip", async () => {
+  it("removes trip receipts through Storage API before the admin delete RPC", async () => {
     const row = { id: "trip", name: "Bandung", description: "Weekend", cover_url: null, start_date: "2026-08-20", end_date: "2026-08-21", invite_code: "BANDUNG", status: "active", created_by: "owner", created_at: "2026-08-11T00:00:00.000Z", finalized_at: null };
     const rpc = vi.fn().mockResolvedValueOnce({ data: row, error: null }).mockResolvedValueOnce({ data: null, error: null });
-    const client = { rpc } as unknown as SupabaseClient<Database>;
+    const list = vi.fn().mockResolvedValue({ data: [{ id: "receipt-id", name: "struk.webp" }], error: null });
+    const remove = vi.fn().mockResolvedValue({ data: [], error: null });
+    const from = vi.fn().mockReturnValue({ list, remove });
+    const client = { rpc, storage: { from } } as unknown as SupabaseClient<Database>;
 
     const updated = await updateOwnedTrip(client, "trip", { name: "Bandung", description: "Weekend", startDate: "2026-08-20", endDate: "2026-08-21" });
     await deleteOwnedTrip(client, "trip");
@@ -103,5 +106,8 @@ describe("trip owner mutations", () => {
     expect(updated.name).toBe("Bandung");
     expect(rpc).toHaveBeenNthCalledWith(1, "update_owned_trip", { p_trip_id: "trip", p_name: "Bandung", p_description: "Weekend", p_start_date: "2026-08-20", p_end_date: "2026-08-21" });
     expect(rpc).toHaveBeenNthCalledWith(2, "delete_owned_trip", { p_trip_id: "trip" });
+    expect(from).toHaveBeenCalledWith("trip-receipts");
+    expect(list).toHaveBeenCalledWith("trip", { limit: 1000, offset: 0, sortBy: { column: "name", order: "asc" } });
+    expect(remove).toHaveBeenCalledWith(["trip/struk.webp"]);
   });
 });
