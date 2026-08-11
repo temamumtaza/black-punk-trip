@@ -4,7 +4,7 @@ Terima kasih sudah ingin membantu Black Punk Trip. Aplikasi ini menangani data p
 
 ## Menyiapkan lingkungan lokal
 
-1. Gunakan Node.js 20.9 atau lebih baru dan npm 10 atau lebih baru.
+1. Gunakan Node.js 22 atau lebih baru dan npm 10 atau lebih baru.
 2. Salin `.env.example` menjadi `.env.local`, lalu isi URL dan publishable key Supabase milik lingkungan pengembangan.
 3. Jalankan `npm install` dan `npm run dev`.
 

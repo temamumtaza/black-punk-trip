@@ -19,7 +19,7 @@ Versi ini hanya memakai data akun dan trip dari Supabase. Tidak ada fallback dem
 
 ## Prasyarat
 
-- Node.js 20 atau lebih baru
+- Node.js 22 atau lebih baru
 - npm
 - Supabase CLI
 - Project Supabase dengan Email/Password dan Google Auth yang sudah dikonfigurasi
