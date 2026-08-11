@@ -1,0 +1,51 @@
+{
+  "title": "Black Punk Trip production-readiness audit",
+  "slug": "production-readiness-2026-08-11",
+  "created_at": "2026-08-11T00:00:00+07:00",
+  "updated_at": "2026-08-11T10:30:00+07:00",
+  "status": "deployed_pending_authenticated_e2e",
+  "mode": "delegated",
+  "baseline_ref": "no-git",
+  "risk_level": "high",
+  "eval_contract": {
+    "level": "full",
+    "path": "eval-contract.md",
+    "status": "ready"
+  },
+  "approval": {
+    "required": true,
+    "granted": true,
+    "notes": "User explicitly authorized production Supabase push and Vercel deployment in a follow-up turn."
+  },
+  "delegation": {
+    "native_agent_available": true,
+    "native_agent_planned": true,
+    "native_agent_used": true,
+    "agent_count": 4,
+    "wave_count": 2,
+    "no_delegation_reason": "",
+    "notes": "Wave 1 explorers plus wave 2 independent review using the same four agents. Parent reconciled stale source findings against the final local state."
+  },
+  "packets": [
+    {"id": "01-data-auth-backend", "status": "completed_with_external_gate", "owner": "Kepler", "write_scope": [], "result_path": "results/01-data-auth-backend.md"},
+    {"id": "02-product-flow-ux", "status": "completed_with_external_gate", "owner": "Mendel", "write_scope": [], "result_path": "results/02-product-flow-ux.md"},
+    {"id": "03-finance-correctness", "status": "completed_with_external_gate", "owner": "Heisenberg", "write_scope": [], "result_path": "results/03-finance-correctness.md"},
+    {"id": "04-deploy-security-pwa", "status": "completed_with_authenticated_gate", "owner": "Meitner", "write_scope": [], "result_path": "results/04-deploy-security-pwa.md"}
+  ],
+  "verification": {
+    "status": "partial",
+    "checks": [
+      {"name": "runtime dummy/localStorage scan", "command": "rg -n -i 'BALI26|Bali Chaos|demo-receipt|localStorage|dummy|fixture' src public supabase --glob '!**/*.test.*'", "required": true, "status": "passed", "evidence": "Zero runtime matches in final scan."},
+      {"name": "unit and component tests", "command": "npm test -- --run", "required": true, "status": "passed", "evidence": "3 files, 15 tests passed, including the pre-join equal expense rebuild, join-time rebalancing math, and Indonesian input-format regressions."},
+      {"name": "lint", "command": "npm run lint", "required": true, "status": "passed", "evidence": "Exit 0."},
+      {"name": "typecheck", "command": "npx tsc --noEmit", "required": true, "status": "passed", "evidence": "Exit 0."},
+      {"name": "production build", "command": "npm run build", "required": true, "status": "passed", "evidence": "Exit 0; dynamic /app and /auth/callback routes built."},
+      {"name": "HTTP/browser/PWA smoke", "command": "browser or curl smoke against local/production target", "required": true, "status": "partial", "evidence": "Live public HTTP and login browser smoke passed; authenticated browser and real-device PWA install remain unproven."},
+      {"name": "independent review wave", "command": "four reused explorer agents review integrated state", "required": true, "status": "completed_with_failures", "evidence": "Wave 2 scores: Kepler 7.2, Mendel 8.2, Heisenberg 8.2, Meitner 5.0; parent reconciled findings in integration.md."},
+      {"name": "remote Supabase migration", "command": "supabase db push --linked --yes && supabase migration list --linked && supabase db lint --linked --level error --fail-on error", "required": true, "status": "passed", "evidence": "Remote 0001-0006 present; schema lint reports No schema errors found. Read-only health query reports 0 active equal expenses out of sync; deployed join RPC calls the rebalancer."},
+      {"name": "live Vercel release", "command": "vercel deploy --prod --yes and live HTTP/browser smoke", "required": true, "status": "passed", "evidence": "Deployment dpl_7pHBceQwhynNjHP3XX6wxD6tUhSD READY; alias current; public signup/login HTTP smoke has no dummy/local-host markers."},
+      {"name": "production Auth redirect config", "command": "supabase config push --yes, Auth settings probe, Google authorize probe", "required": true, "status": "passed", "evidence": "Site URL is Vercel; callback wildcard is allow-listed; email/Google enabled; authorize request returns 302 to accounts.google.com. Actual signup/OAuth completion remains unproven."},
+      {"name": "authenticated two-user E2E", "command": "real test accounts against live Supabase/Vercel", "required": true, "status": "unproven", "evidence": "No test credentials/session supplied; no financial or account data was submitted through the live UI."}
+    ]
+  }
+}

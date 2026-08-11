@@ -1,0 +1,63 @@
+{
+  "name": "black-punk-trip",
+  "version": "0.1.0",
+  "description": "PWA mobile-first untuk mencatat talangan dan menyelesaikan pengeluaran trip bersama.",
+  "private": true,
+  "license": "UNLICENSED",
+  "author": "temamumtaza",
+  "homepage": "https://black-punk-trip.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/temamumtaza/black-punk-trip.git"
+  },
+  "bugs": {
+    "url": "https://github.com/temamumtaza/black-punk-trip/issues"
+  },
+  "keywords": [
+    "trip",
+    "expense-splitting",
+    "talangan",
+    "pwa",
+    "supabase",
+    "nextjs",
+    "indonesia"
+  ],
+  "engines": {
+    "node": ">=20.9.0",
+    "npm": ">=10"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "test": "vitest run",
+    "check": "npm run lint && npm test && tsc --noEmit",
+    "ci": "npm run check && npm run build"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.12.4",
+    "@supabase/supabase-js": "^2.112.2",
+    "lucide-react": "^1.31.0",
+    "next": "16.3.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "react-hook-form": "^7.85.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^4.1.10",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.0",
+    "jsdom": "^30.0.1",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^4.1.10"
+  }
+}
