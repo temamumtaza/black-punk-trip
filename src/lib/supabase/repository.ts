@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/lib/supabase/database";
 import { allocationsReconcile } from "@/lib/finance";
-import type { AppState, Expense, Profile, Settlement, Trip, TripMember } from "@/lib/types";
+import type { AppState, Expense, MemberRole, Profile, Settlement, Trip, TripMember } from "@/lib/types";
 
 type Client = SupabaseClient<Database>;
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
@@ -38,7 +38,7 @@ function assertNoError(error: { message: string; code?: string } | null): assert
     "INVALID_CATEGORY", "INVALID_RECEIPT", "PAYER_NOT_IN_TRIP", "INVALID_ALLOCATIONS", "ALLOCATIONS_DO_NOT_RECONCILE", "INVALID_ALLOCATION_AMOUNT",
     "DUPLICATE_ALLOCATION", "ALLOCATION_MEMBER_NOT_IN_TRIP", "EXPENSE_NOT_FOUND", "EXPENSE_ACCESS_DENIED", "TRIP_NOT_FOUND",
     "TRIP_ALREADY_FINALIZED", "INVALID_TRIP_EXPENSES", "UNBALANCED_TRIP", "INVALID_SETTLEMENT", "SETTLEMENT_ACCESS_DENIED", "INVITE_NOT_FOUND",
-    "ADMIN_REQUIRED", "TRIP_NOT_FINALIZED", "SETTLEMENT_ALREADY_PAID",
+    "ADMIN_REQUIRED", "TRIP_NOT_FINALIZED", "SETTLEMENT_ALREADY_PAID", "MEMBER_NOT_FOUND", "MEMBER_HAS_ACTIVITY", "SELF_MEMBER_MANAGEMENT_FORBIDDEN",
   ];
   const code = knownCodes.find((candidate) => error.code === candidate || error.message.includes(candidate));
   const messages: Record<string, string> = {
@@ -68,6 +68,9 @@ function assertNoError(error: { message: string; code?: string } | null): assert
     ADMIN_REQUIRED: "Hanya admin trip yang dapat melakukan aksi ini.",
     TRIP_NOT_FINALIZED: "Trip belum difinalisasi.",
     SETTLEMENT_ALREADY_PAID: "Trip tidak bisa dibuka kembali karena sudah ada transfer yang ditandai lunas.",
+    MEMBER_NOT_FOUND: "Anggota ini sudah tidak ada di trip.",
+    MEMBER_HAS_ACTIVITY: "Anggota ini punya catatan atau pembagian aktif. Bereskan catatan tersebut sebelum mengeluarkannya.",
+    SELF_MEMBER_MANAGEMENT_FORBIDDEN: "Admin tidak dapat mengubah atau mengeluarkan dirinya sendiri.",
   };
   const infrastructureMessage = error.code === "57014"
     ? "Server terlalu lama memproses permintaan. Data belum berubah—coba lagi beberapa detik."
@@ -273,6 +276,18 @@ export async function unlockTrip(client: Client, tripId: string) {
   assertNoError(response.error);
   if (!response.data) throw new RepositoryError("Trip belum berhasil dibuka kembali.");
   return mapTrip(response.data);
+}
+
+export async function updateTripMemberRole(client: Client, tripId: string, userId: string, role: MemberRole) {
+  const response = await client.rpc("update_trip_member_role", { p_trip_id: tripId, p_user_id: userId, p_role: role });
+  assertNoError(response.error);
+  if (!response.data) throw new RepositoryError("Peran anggota belum berhasil diperbarui.");
+  return mapMember(response.data);
+}
+
+export async function removeTripMember(client: Client, tripId: string, userId: string) {
+  const response = await client.rpc("remove_trip_member", { p_trip_id: tripId, p_user_id: userId });
+  assertNoError(response.error);
 }
 
 export async function markSettlementPaid(client: Client, settlementId: string) {

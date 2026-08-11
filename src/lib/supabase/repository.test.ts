@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database";
-import { loadAppState } from "@/lib/supabase/repository";
+import { loadAppState, removeTripMember, updateTripMemberRole } from "@/lib/supabase/repository";
 
 function createQuery(data: unknown, selections?: string[]): Record<string, unknown> {
   const query: Record<string, unknown> = {};
@@ -54,5 +54,22 @@ describe("loadAppState", () => {
     expect(selections.some((selection) => selection.includes("expense_allocations(id,expense_id,user_id,amount)"))).toBe(true);
     expect(state.profiles).toEqual([{ id: currentUserId, displayName: "Andi", avatarUrl: null, createdAt: "2026-08-11T00:00:00.000Z" }]);
     expect(state.expenses[0]?.allocations).toEqual([{ id: "00000000-0000-0000-0000-000000000030", expenseId, userId: currentUserId, amount: 1000 }]);
+  });
+});
+
+describe("trip membership mutations", () => {
+  it("uses explicit admin RPCs for role changes and removals", async () => {
+    const member = { trip_id: "trip", user_id: "member", role: "admin", joined_at: "2026-08-11T00:00:00.000Z" };
+    const rpc = vi.fn()
+      .mockResolvedValueOnce({ data: member, error: null })
+      .mockResolvedValueOnce({ data: null, error: null });
+    const client = { rpc } as unknown as SupabaseClient<Database>;
+
+    const updated = await updateTripMemberRole(client, "trip", "member", "admin");
+    await removeTripMember(client, "trip", "member");
+
+    expect(updated).toEqual({ tripId: "trip", userId: "member", role: "admin", joinedAt: "2026-08-11T00:00:00.000Z" });
+    expect(rpc).toHaveBeenNthCalledWith(1, "update_trip_member_role", { p_trip_id: "trip", p_user_id: "member", p_role: "admin" });
+    expect(rpc).toHaveBeenNthCalledWith(2, "remove_trip_member", { p_trip_id: "trip", p_user_id: "member" });
   });
 });

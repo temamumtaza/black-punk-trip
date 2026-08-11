@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { TripApp } from "@/components/trip-app";
+import { PwaMobileGate } from "@/components/pwa-mobile-gate";
 import type { AppView } from "@/components/trip-shell";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -27,5 +28,5 @@ export default async function AppPage({ searchParams }: { searchParams: Promise<
   const trip = Array.isArray(params.trip) ? params.trip[0] : params.trip;
   const code = Array.isArray(params.code) ? params.code[0] : params.code;
   const expense = Array.isArray(params.expense) ? params.expense[0] : params.expense;
-  return <TripApp initialView={normalizeView(params.view)} initialUserId={userResponse.data.user.id} initialTripId={trip} initialJoinCode={code} initialExpenseId={expense} />;
+  return <PwaMobileGate><TripApp initialView={normalizeView(params.view)} initialUserId={userResponse.data.user.id} initialTripId={trip} initialJoinCode={code} initialExpenseId={expense} /></PwaMobileGate>;
 }

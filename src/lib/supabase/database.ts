@@ -131,6 +131,11 @@ export type Database = {
       delete_expense: { Args: { p_expense_id: string }; Returns: undefined };
       finalize_trip: { Args: { p_trip_id: string }; Returns: SettlementRow[] };
       unlock_trip: { Args: { p_trip_id: string }; Returns: TripRow };
+      update_trip_member_role: {
+        Args: { p_trip_id: string; p_user_id: string; p_role: "admin" | "member" };
+        Returns: TripMemberRow;
+      };
+      remove_trip_member: { Args: { p_trip_id: string; p_user_id: string }; Returns: undefined };
       mark_settlement_paid: { Args: { p_settlement_id: string }; Returns: SettlementRow };
     };
     Enums: {
