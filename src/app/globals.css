@@ -187,6 +187,7 @@ a { color: inherit; }
 .pwa-gate-instructions li strong { color: var(--charcoal); font-weight: 400; }
 .apple-safari-share-icon { width: 17px; height: 17px; flex: 0 0 auto; color: var(--charcoal); }
 .pwa-gate-instructions small { display: block; margin-top: 13px; color: var(--muted); font-size: 10px; }
+.pwa-open-existing-tip { margin: 14px 0 0 !important; color: var(--charcoal) !important; font-size: 11px !important; line-height: 1.4; }
 .pwa-gate-plus, .pwa-gate-menu { display: grid; width: 15px; height: 15px; flex: 0 0 auto; place-items: center; border: 1px solid var(--line-strong); border-radius: 4px; color: var(--charcoal); font-size: 12px; line-height: 1; }
 .pwa-gate-menu { border: 0; font-size: 18px; }
 .pwa-install-button { width: 100%; margin-top: 3px; }
