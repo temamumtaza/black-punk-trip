@@ -7,7 +7,7 @@ import { createPortal } from "react-dom";
 import { ExpenseCategoryIcon } from "@/components/expense-category-icon";
 import { Button } from "@/components/ui";
 import type { Expense, Profile, Trip } from "@/lib/types";
-import { categoryLabels, formatRupiah, formatShortDate } from "@/lib/format";
+import { avatarColor, categoryLabels, formatRupiah, formatShortDate } from "@/lib/format";
 
 interface ExpenseDetailProps {
   expense: Expense;
@@ -89,7 +89,7 @@ export function ExpenseDetail({ expense, trip, profiles, currentUserId, canEdit,
     <div className="detail-grid">
       <section className="panel">
         <div className="panel-head"><div><p className="eyebrow">PEMBAGIAN</p><h2>Bagian tiap orang</h2></div><span className="split-badge">{expense.splitType === "equal" ? "Rata" : expense.splitType === "selected_equal" ? "Pilih orang" : "Custom"}</span></div>
-        <div className="allocation-list">{visibleAllocations.map(({ allocation, profile }) => <div className="allocation-row" key={allocation.id || `${expense.id}-${allocation.userId}`}><span className="avatar avatar-small" aria-hidden="true">{profile?.displayName.slice(0, 2).toUpperCase()}</span><span>{profile?.displayName ?? "Anggota"}{allocation.userId === currentUserId ? <small> · kamu</small> : null}</span><strong>{formatRupiah(allocation.amount)}</strong></div>)}</div>
+        <div className="allocation-list">{visibleAllocations.map(({ allocation, profile }) => <div className="allocation-row" key={allocation.id || `${expense.id}-${allocation.userId}`}><span className="avatar avatar-small" aria-hidden="true" style={{ backgroundColor: avatarColor(allocation.userId, profiles.map((item) => item.id)) }}>{profile?.displayName.slice(0, 2).toUpperCase()}</span><span>{profile?.displayName ?? "Anggota"}{allocation.userId === currentUserId ? <small> · kamu</small> : null}</span><strong>{formatRupiah(allocation.amount)}</strong></div>)}</div>
       </section>
       <aside className="side-stack">
         <section className="panel detail-meta-panel">

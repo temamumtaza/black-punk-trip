@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BrandMark } from "@/components/brand-mark";
 import { ExpenseDetail } from "@/components/expense-detail";
 import { ExpenseForm } from "@/components/expense-form";
 import { ExpenseList } from "@/components/expense-list";
 import { MembersView } from "@/components/members-view";
+import { NotificationPrompt } from "@/components/notification-prompt";
 import { PullToRefresh } from "@/components/pull-to-refresh";
 import { SettingsView } from "@/components/settings-view";
 import { SettlementView } from "@/components/settlement-view";
@@ -16,6 +17,8 @@ import { AppView, TripShell } from "@/components/trip-shell";
 import { TripsView } from "@/components/trips-view";
 import { Button } from "@/components/ui";
 import { buildSettlementPreview, calculateMemberLedgers, validateTripExpenses } from "@/lib/finance";
+import { avatarColor } from "@/lib/format";
+import { getNotificationPermission, getTomorrowJakartaDate, isPushSupported, subscribeToPush } from "@/lib/notifications";
 import {
   createGuestMember,
   createTrip,
@@ -33,6 +36,8 @@ import {
   updateGuestMemberName,
   unlockTrip,
   updateOwnedTrip,
+  updateNotificationPreference,
+  upsertPushSubscription,
   uploadReceipt,
 } from "@/lib/supabase/repository";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -79,6 +84,9 @@ export function TripApp({ initialView, initialTripId, initialJoinCode, initialEx
   const [isCreatingGuest, setIsCreatingGuest] = useState(false);
   const [isSavingTrip, setIsSavingTrip] = useState(false);
   const [isDeletingTrip, setIsDeletingTrip] = useState(false);
+  const [notificationSupported, setNotificationSupported] = useState(false);
+  const [isSavingNotifications, setIsSavingNotifications] = useState(false);
+  const [notificationError, setNotificationError] = useState("");
   const loadInFlight = useRef<Promise<void> | null>(null);
 
   const client = getSupabaseBrowserClient();
@@ -166,6 +174,11 @@ export function TripApp({ initialView, initialTripId, initialJoinCode, initialEx
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => setNotificationSupported(isPushSupported()), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   function navigate(nextView: AppView, nextTripId = activeTripId, nextExpenseId = selectedExpenseId ?? "") {
     setView(nextView);
     setRequestedTripId(nextTripId);
@@ -202,6 +215,65 @@ export function TripApp({ initialView, initialTripId, initialJoinCode, initialEx
 
   function updateAppState(updater: (current: AppState) => AppState) {
     setState((current) => current ? updater(current) : current);
+  }
+
+  async function handleEnableNotifications(): Promise<boolean> {
+    if (!client) return false;
+    setIsSavingNotifications(true);
+    setNotificationError("");
+    try {
+      const subscription = await subscribeToPush();
+      await upsertPushSubscription(client, subscription);
+      const preference = await updateNotificationPreference(client, { promptState: "enabled", snoozeUntil: null, pushEnabled: true });
+      updateAppState((current) => ({ ...current, notificationPreference: preference }));
+      return true;
+    } catch (failure) {
+      const message = errorMessage(failure);
+      setNotificationError(message);
+      if (getNotificationPermission() === "denied") {
+        try {
+          const preference = await updateNotificationPreference(client, { promptState: "denied", snoozeUntil: null, pushEnabled: false });
+          updateAppState((current) => ({ ...current, notificationPreference: preference }));
+        } catch {
+          // Keep the original browser error visible; the next load will retry the preference read.
+        }
+      }
+      return false;
+    } finally {
+      setIsSavingNotifications(false);
+    }
+  }
+
+  async function handleSnoozeNotifications(): Promise<boolean> {
+    if (!client) return false;
+    setIsSavingNotifications(true);
+    setNotificationError("");
+    try {
+      const preference = await updateNotificationPreference(client, { promptState: "snoozed", snoozeUntil: getTomorrowJakartaDate(), pushEnabled: false });
+      updateAppState((current) => ({ ...current, notificationPreference: preference }));
+      return true;
+    } catch (failure) {
+      setNotificationError(errorMessage(failure));
+      return false;
+    } finally {
+      setIsSavingNotifications(false);
+    }
+  }
+
+  async function handleNeverNotifications(): Promise<boolean> {
+    if (!client) return false;
+    setIsSavingNotifications(true);
+    setNotificationError("");
+    try {
+      const preference = await updateNotificationPreference(client, { promptState: "never", snoozeUntil: null, pushEnabled: false });
+      updateAppState((current) => ({ ...current, notificationPreference: preference }));
+      return true;
+    } catch (failure) {
+      setNotificationError(errorMessage(failure));
+      return false;
+    } finally {
+      setIsSavingNotifications(false);
+    }
   }
 
   async function handleSaveExpense(expense: Expense) {
@@ -565,18 +637,20 @@ export function TripApp({ initialView, initialTripId, initialJoinCode, initialEx
     return <TripNotFoundView onBack={() => { setActiveTripId(state.trips[0]?.id ?? ""); navigate("trips", state.trips[0]?.id ?? ""); }} />;
   }
 
+  const notificationPrompt = <NotificationPrompt preference={state.notificationPreference} supported={notificationSupported} isSaving={isSavingNotifications} error={notificationError} onEnable={handleEnableNotifications} onSnooze={handleSnoozeNotifications} onNever={handleNeverNotifications} />;
+
   if (!state.trips.length || !trip) {
     if (view === "create-trip" || view === "join-trip") {
       return <main className="onboarding-shell"><div className="onboarding-brand"><BrandMark compact href="/" /></div><TripFormView mode={view === "join-trip" ? "join" : "create"} initialCode={initialJoinCode} onBack={() => setView("trips")} onCreate={handleCreateTrip} onJoin={handleJoinTrip} error={actionError} /></main>;
     }
-    return <NoTripsView profile={currentProfile} actionError={actionError} onCreate={() => setView("create-trip")} onJoin={() => setView("join-trip")} onSignOut={handleSignOut} />;
+    return <NoTripsView profile={currentProfile} actionError={actionError} notificationPrompt={notificationPrompt} onCreate={() => setView("create-trip")} onJoin={() => setView("join-trip")} onSignOut={handleSignOut} />;
   }
 
   const isAdmin = currentMember?.role === "admin";
   const isOwner = trip.createdBy === currentUserId;
   const common = { trip, currentProfile, activeView: view, isAdmin, onNavigate: navigate, onSignOut: handleSignOut };
   if ((view === "detail" || view === "edit-expense") && !selectedExpense) {
-    return <PullToRefresh onRefresh={() => reload()}><TripShell {...common}><section className="panel missing-state"><p className="eyebrow">CATATAN TIDAK DITEMUKAN</p><h1>Talangan ini tidak tersedia.</h1><p>Catatan mungkin sudah dihapus atau kamu tidak punya akses ke trip tersebut.</p><Button variant="ghost" onClick={() => navigate("expenses")}>Kembali ke talangan</Button></section></TripShell></PullToRefresh>;
+    return <PullToRefresh onRefresh={() => reload()}><TripShell {...common}><section className="panel missing-state"><p className="eyebrow">CATATAN TIDAK DITEMUKAN</p><h1>Talangan ini tidak tersedia.</h1><p>Catatan mungkin sudah dihapus atau kamu tidak punya akses ke trip tersebut.</p><Button variant="ghost" onClick={() => navigate("expenses")}>Kembali ke talangan</Button></section></TripShell>{notificationPrompt}</PullToRefresh>;
   }
   return <PullToRefresh onRefresh={() => reload()}><TripShell {...common}>
     {actionError ? <div className="app-alert" role="alert">{actionError}</div> : null}
@@ -584,13 +658,13 @@ export function TripApp({ initialView, initialTripId, initialJoinCode, initialEx
     {view === "expenses" ? <ExpenseList expenses={expenses} profiles={profiles} onAdd={() => navigate("add-expense")} onOpen={(id) => { setSelectedExpenseId(id); navigate("detail", trip.id, id); }} /> : null}
     {view === "members" ? <MembersView trip={trip} profiles={profiles} members={tripMembers} ledgers={ledgers} currentUserId={currentUserId} isAdmin={isAdmin} pendingMemberId={pendingMemberId} isCreatingGuest={isCreatingGuest} onChangeRole={handleChangeMemberRole} onRemove={handleRemoveMember} onCreateGuest={handleCreateGuestMember} onUpdateGuestName={handleUpdateGuestMemberName} /> : null}
     {view === "settlement" || view === "review" ? <SettlementView trip={trip} profiles={profiles} ledgers={ledgers} preview={preview} settlements={settlements} validationErrors={validationErrors} currentUserId={currentUserId} isReview={view === "review" && isAdmin} isAdmin={isAdmin} pendingSettlementId={pendingSettlementId} isFinalizing={isFinalizing} isUnlocking={isUnlocking} onMarkPaid={handleMarkSettlementPaid} onFinalize={handleFinalizeTrip} onUnlock={handleUnlockTrip} /> : null}
-    {view === "settings" ? <SettingsView trip={trip} creatorName={creatorName} isAdmin={isAdmin} isOwner={isOwner} isSavingTrip={isSavingTrip} isDeletingTrip={isDeletingTrip} onReview={() => navigate("review")} onManageTrips={() => navigate("trips")} onSignOut={handleSignOut} onSaveTrip={handleUpdateTrip} onDeleteTrip={handleDeleteTrip} /> : null}
+    {view === "settings" ? <SettingsView trip={trip} creatorName={creatorName} isAdmin={isAdmin} isOwner={isOwner} isSavingTrip={isSavingTrip} isDeletingTrip={isDeletingTrip} notificationPreference={state.notificationPreference} notificationSupported={notificationSupported} isSavingNotifications={isSavingNotifications} onEnableNotifications={handleEnableNotifications} onReview={() => navigate("review")} onManageTrips={() => navigate("trips")} onSignOut={handleSignOut} onSaveTrip={handleUpdateTrip} onDeleteTrip={handleDeleteTrip} /> : null}
     {view === "add-expense" ? <ExpenseForm members={profiles} currentUserId={currentUserId} tripId={trip.id} locked={trip.status === "finalized"} onSubmit={handleSaveExpense} onUploadReceipt={handleUploadReceipt} onCancel={() => navigate("home")} /> : null}
     {view === "edit-expense" && selectedExpense ? <ExpenseForm members={profiles} currentUserId={currentUserId} tripId={trip.id} initialExpense={selectedExpense} locked={trip.status === "finalized" || (selectedExpense.createdBy !== currentUserId && currentMember?.role !== "admin")} onSubmit={handleSaveExpense} onUploadReceipt={handleUploadReceipt} onCancel={() => navigate("detail")} /> : null}
     {view === "detail" && selectedExpense ? <ExpenseDetail expense={selectedExpense} trip={trip} profiles={profiles} currentUserId={currentUserId} canEdit={selectedExpense.createdBy === currentUserId || currentMember?.role === "admin"} isDeleting={deletingExpenseId === selectedExpense.id} onBack={() => navigate("expenses")} onEdit={() => navigate("edit-expense")} onDelete={() => handleDeleteExpense(selectedExpense.id)} onGetReceiptUrl={handleGetReceiptUrl} /> : null}
     {view === "trips" ? <TripsView trips={state.trips} memberCountsByTrip={memberCountsByTrip} ledgersByTrip={ledgersByTrip} totalsByTrip={totalsByTrip} activeTripId={trip.id} onOpen={(tripId) => { setActiveTripId(tripId); navigate("home", tripId); }} onCreate={() => navigate("create-trip")} onJoin={() => navigate("join-trip")} /> : null}
     {view === "create-trip" || view === "join-trip" ? <TripFormView mode={view === "join-trip" ? "join" : "create"} initialCode={initialJoinCode} onBack={() => navigate("trips")} onCreate={handleCreateTrip} onJoin={handleJoinTrip} error={actionError} /> : null}
-  </TripShell></PullToRefresh>;
+  </TripShell>{notificationPrompt}</PullToRefresh>;
 }
 
 function AppLoading() {
@@ -601,8 +675,8 @@ function AppError({ message, onRetry, onLogin }: { message: string; onRetry: () 
   return <main className="error-screen"><p className="eyebrow">KONEKSI BELUM SIAP</p><h1>Data belum terbuka.</h1><p>{message}</p><div className="error-actions"><Button onClick={onRetry}>Coba lagi</Button><Button variant="ghost" onClick={onLogin}>Kembali ke login</Button></div></main>;
 }
 
-function NoTripsView({ profile, actionError, onCreate, onJoin, onSignOut }: { profile: Profile; actionError: string; onCreate: () => void; onJoin: () => void; onSignOut: () => void }) {
-  return <main className="no-trips-shell"><div className="no-trips-topbar"><BrandMark compact href="/" /><button className="account-mini" onClick={onSignOut} type="button"><span className="avatar">{profile.displayName.slice(0, 2).toUpperCase()}</span><span><strong>{profile.displayName}</strong><small>Akun aktif</small></span></button></div><section className="no-trips-card"><p className="eyebrow">RUANG PERTAMAMU</p><h1>Belum ada trip.</h1><p>Bikin ruang baru atau masuk ke trip teman dengan kode undangan. Semua data akan tersimpan di akunmu.</p>{actionError ? <div className="app-alert" role="alert">{actionError}</div> : null}<div className="no-trips-actions"><Button onClick={onCreate}>Bikin trip baru</Button><Button variant="ghost" onClick={onJoin}>Gabung dengan kode</Button></div></section></main>;
+function NoTripsView({ profile, actionError, notificationPrompt, onCreate, onJoin, onSignOut }: { profile: Profile; actionError: string; notificationPrompt: ReactNode; onCreate: () => void; onJoin: () => void; onSignOut: () => void }) {
+  return <><main className="no-trips-shell"><div className="no-trips-topbar"><BrandMark compact href="/" /><button className="account-mini" onClick={onSignOut} type="button"><span className="avatar" style={{ backgroundColor: avatarColor(profile.id) }}>{profile.displayName.slice(0, 2).toUpperCase()}</span><span><strong>{profile.displayName}</strong><small>Akun aktif</small></span></button></div><section className="no-trips-card"><p className="eyebrow">RUANG PERTAMAMU</p><h1>Belum ada trip.</h1><p>Bikin ruang baru atau masuk ke trip teman dengan kode undangan. Semua data akan tersimpan di akunmu.</p>{actionError ? <div className="app-alert" role="alert">{actionError}</div> : null}<div className="no-trips-actions"><Button onClick={onCreate}>Bikin trip baru</Button><Button variant="ghost" onClick={onJoin}>Gabung dengan kode</Button></div></section></main>{notificationPrompt}</>;
 }
 
 function TripNotFoundView({ onBack }: { onBack: () => void }) {

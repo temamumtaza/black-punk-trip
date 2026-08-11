@@ -239,14 +239,11 @@ a { color: inherit; }
 .account-mini > span:nth-child(2) { display: flex; min-width: 0; flex: 1; flex-direction: column; }
 .account-mini strong { color: var(--charcoal); font-size: 12px; font-weight: 400; }
 .account-mini > svg { color: var(--muted); }
-.avatar { display: inline-grid; width: 32px; height: 32px; flex: 0 0 auto; place-items: center; border: 1px solid var(--cream); border-radius: 50%; background: #d7b9a5; color: var(--charcoal); font-size: 10px; font-weight: 600; }
+.avatar { display: inline-grid; width: 32px; height: 32px; flex: 0 0 auto; place-items: center; border: 1px solid var(--cream); border-radius: 50%; background: var(--avatar-background, #d7b9a5); color: var(--charcoal); font-size: 10px; font-weight: 600; }
 .avatar-small { width: 25px; height: 25px; font-size: 8px; }
 .avatar-stack { display: flex; align-items: center; }
 .avatar-stack .avatar { margin-left: -7px; border-color: var(--cream); }
 .avatar-stack .avatar:first-child { margin-left: 0; }
-.avatar-stack .avatar:nth-child(2) { background: #b7cdd1; }
-.avatar-stack .avatar:nth-child(3) { background: #d0c6a8; }
-.avatar-stack .avatar:nth-child(4) { background: #b9c5aa; }
 .avatar-more { background: var(--charcoal) !important; color: var(--cream-bright); }
 .app-content { width: calc(100% - 245px); min-width: 0; min-height: 100svh; margin-left: 245px; padding-top: 66px; overflow-x: clip; }
 .app-topbar { position: fixed; z-index: 8; top: 0; right: 0; left: 245px; display: flex; height: 66px; min-height: 0; align-items: center; justify-content: space-between; overflow: hidden; padding: 0 46px; border-bottom: 1px solid var(--line); background: rgba(247, 244, 237, .94); backdrop-filter: blur(12px); }
@@ -577,6 +574,30 @@ a { color: inherit; }
 .invite-notice { width: 100%; margin: -2px 0 0; color: var(--muted); font-size: 11px; line-height: 1.35; }
 .settings-actions { display: flex; align-items: end; gap: 9px; }
 .settings-actions .field { min-width: 250px; flex: 1; margin: 0; }
+.notification-settings-panel { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 15px; grid-column: 1 / -1; background: rgba(252, 251, 248, .55) !important; }
+.notification-settings-icon { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 50%; background: var(--charcoal); color: var(--cream-bright); }
+.notification-settings-copy h2 { margin: 4px 0 4px; font-size: 19px; font-weight: 400; letter-spacing: -.4px; }
+.notification-settings-copy p:not(.eyebrow):not(.notification-prompt-error) { max-width: 650px; margin: 0; color: var(--muted); font-size: 12px; }
+.notification-settings-copy .field-hint { display: block; margin-top: 5px; }
+.notification-settings-button { flex: 0 0 auto; }
+.notification-prompt-backdrop { position: fixed; z-index: 40; inset: 0; display: grid; align-items: end; padding: 18px max(18px, env(safe-area-inset-right)) calc(18px + env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left)); background: rgba(28, 28, 28, .34); backdrop-filter: blur(5px); animation: notification-fade-in .18s ease both; }
+.notification-prompt { width: min(100%, 520px); margin: 0 auto; padding: 22px; border: 1px solid rgba(28, 28, 28, .12); border-radius: 14px; background: var(--cream-bright); box-shadow: 0 18px 55px rgba(28, 28, 28, .19); animation: notification-sheet-in .2s ease both; }
+.notification-prompt-mark { display: grid; width: 43px; height: 43px; margin-bottom: 17px; place-items: center; border-radius: 50%; background: var(--charcoal); color: var(--cream-bright); }
+.notification-prompt h2 { margin: 7px 0 8px; font-size: clamp(27px, 5vw, 34px); font-weight: 400; letter-spacing: -1.2px; line-height: 1.02; }
+.notification-prompt-copy { max-width: 440px; margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.notification-prompt-benefits { display: grid; gap: 8px; margin: 18px 0 16px; padding: 0; list-style: none; color: var(--charcoal-soft); font-size: 12px; }
+.notification-prompt-benefits li { display: flex; align-items: center; gap: 8px; }
+.notification-prompt-benefits svg { flex: 0 0 auto; color: var(--green); }
+.notification-prompt-note { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--muted); font-size: 10px; line-height: 1.4; }
+.notification-prompt-note svg { flex: 0 0 auto; }
+.notification-prompt-error { margin: 11px 0 0; color: var(--red); font-size: 11px; line-height: 1.4; }
+.notification-prompt-actions { display: grid; gap: 8px; margin-top: 19px; }
+.notification-prompt-primary { width: 100%; min-height: 49px; font-size: 13px; }
+.notification-prompt-snooze, .notification-prompt-never { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 38px; border: 0; background: transparent; color: var(--muted); font-size: 11px; }
+.notification-prompt-snooze:hover, .notification-prompt-never:hover { color: var(--charcoal); text-decoration: underline; text-underline-offset: 3px; }
+.notification-prompt-never { color: var(--red); }
+@keyframes notification-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes notification-sheet-in { from { opacity: 0; transform: translateY(13px); } to { opacity: 1; transform: translateY(0); } }
 .owner-trip-panel { grid-column: 1 / -1; }
 .owner-trip-copy { margin: 9px 0 0; color: var(--muted); font-size: 12px; }
 .owner-trip-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 18px; }
@@ -788,6 +809,12 @@ a { color: inherit; }
   .member-management-actions .btn { width: 100%; justify-content: center; }
   .guest-name-edit { align-items: stretch; flex-direction: column; }
   .settings-grid { gap: 12px; }
+  .notification-settings-panel { grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 12px; }
+  .notification-settings-button { grid-column: 1 / -1; width: 100%; }
+  .notification-prompt-backdrop { padding: 10px max(10px, env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left)); }
+  .notification-prompt { padding: 19px 17px 15px; border-radius: 13px; }
+  .notification-prompt h2 { font-size: 28px; }
+  .notification-prompt-benefits { margin-top: 16px; }
   .owner-trip-form { grid-template-columns: 1fr; gap: 12px; }
   .owner-trip-danger { align-items: stretch; flex-direction: column; }
   .owner-trip-danger .btn { width: 100%; justify-content: center; }

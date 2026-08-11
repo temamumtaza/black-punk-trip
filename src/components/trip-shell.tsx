@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { BanknoteArrowDown, ChevronDown, ClipboardList, Home, LogOut, Settings2, UsersRound } from "lucide-react";
 import { BrandMark } from "@/components/brand-mark";
+import { avatarColor } from "@/lib/format";
 import type { Profile, Trip } from "@/lib/types";
 
 export type AppView = "home" | "expenses" | "members" | "settlement" | "review" | "settings" | "add-expense" | "detail" | "edit-expense" | "trips" | "create-trip" | "join-trip";
@@ -45,7 +46,7 @@ export function TripShell({ trip, currentProfile, activeView, children, isAdmin,
         </nav>
         <div className="rail-bottom">
           <div className="invite-mini"><span className="eyebrow">KODE GABUNG</span><strong>{trip.inviteCode}</strong><small>Bagikan ke rombongan</small></div>
-          <button className="account-mini" onClick={onSignOut} type="button"><span className="avatar">{currentProfile.displayName.slice(0, 2).toUpperCase()}</span><span><strong>{currentProfile.displayName}</strong><small>Akun aktif</small></span><LogOut size={15} /></button>
+          <button className="account-mini" onClick={onSignOut} type="button"><span className="avatar" style={{ backgroundColor: avatarColor(currentProfile.id) }}>{currentProfile.displayName.slice(0, 2).toUpperCase()}</span><span><strong>{currentProfile.displayName}</strong><small>Akun aktif</small></span><LogOut size={15} /></button>
         </div>
       </aside>
       <div className="app-content">

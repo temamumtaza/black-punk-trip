@@ -16,6 +16,7 @@ Versi ini hanya memakai data akun dan trip dari Supabase. Tidak ada fallback dem
 - Supabase Auth, PostgreSQL, RLS, dan private Storage
 - Vercel untuk deployment
 - PWA standalone dengan service worker untuk shell publik/offline yang jujur
+- Web Push native dengan preferensi per akun dan pengingat tanggal trip
 
 ## Prasyarat
 
@@ -39,6 +40,7 @@ Buka `http://localhost:3000`. Isi `.env.local` dengan URL dan publishable key pr
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<publishable-key>
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=<public-vapid-key>
 ```
 
 `NEXT_PUBLIC_SUPABASE_ANON_KEY` masih diterima sebagai fallback untuk project Supabase lama. Jangan pernah memasukkan service-role key ke browser, `.env.example`, atau environment variable `NEXT_PUBLIC_*`.
@@ -52,6 +54,7 @@ Migration tersedia di:
 - `supabase/migrations/0003_finalize_trip_lint.sql` dan `0004_finalize_trip_arrays.sql` — koreksi implementasi settlement agar schema lint production bersih.
 - `supabase/migrations/0005_google_first_name_profiles.sql` — default nama depan untuk akun Google tanpa menimpa nickname email.
 - `supabase/migrations/0006_rebalance_equal_expenses_on_join.sql` — memasukkan member baru ke expense `Rata` secara atomik dan memperbaiki expense aktif lama yang terdampak.
+- `supabase/migrations/0014_notifications.sql` dan `0015_notification_dispatch.sql` — preferensi notifikasi, subscription perangkat, event batch 1, dispatch `pg_net`, dan cron pengingat trip.
 
 Link project dan jalankan migration setelah memastikan project yang aktif benar:
 
@@ -75,6 +78,12 @@ http://localhost:3000/auth/callback
 ```
 
 Storage menggunakan bucket privat `trip-receipts`; URL bukti pembayaran dibuat melalui signed URL dan tidak dipublikasikan sebagai asset umum.
+
+### Push notification production
+
+Worker `supabase/functions/push-notifications` memakai Web Push/VAPID. Public key boleh berada di Vercel sebagai `NEXT_PUBLIC_VAPID_PUBLIC_KEY`; private key dan secret internal hanya berada di Supabase secrets. Migration `0015` membaca secret internal dari Supabase Vault, memanggil worker setelah event dibuat, dan menjalankan retry/cek pengingat setiap jam melalui `pg_cron`.
+
+Batch pertama mencakup talangan baru/diubah/dihapus, perubahan anggota, finalize/unlock trip, settlement dibayar, serta pengingat H-1 tanggal mulai dan H+1 tanggal selesai. Pengguna yang memilih “Jangan pernah” tidak akan mendapat popup otomatis lagi; aktivasi manual tetap tersedia di Pengaturan.
 
 ## Fitur tersedia
 
@@ -115,6 +124,7 @@ Project deploy memakai Next.js dengan environment variables berikut pada Develop
 
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+- `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
 
 URL Vercel saat ini: `https://black-punk-trip.vercel.app`.
 

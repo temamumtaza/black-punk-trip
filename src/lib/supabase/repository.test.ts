@@ -43,13 +43,14 @@ describe("loadAppState", () => {
       if (table === "trips") return createQuery([trip], selections);
       if (table === "expenses") return createQuery([expense], selections);
       if (table === "settlements") return createQuery([], selections);
+      if (table === "notification_preferences") return createQuery(null, selections);
       throw new Error(`Unexpected table ${table}`);
     });
     const client = { from } as unknown as SupabaseClient<Database>;
 
     const state = await loadAppState(client, currentUserId);
 
-    expect(from).toHaveBeenCalledTimes(6);
+    expect(from).toHaveBeenCalledTimes(7);
     expect(selections.some((selection) => selection.includes("profiles(id,display_name,avatar_url,is_guest,created_at)"))).toBe(true);
     expect(selections.some((selection) => selection.includes("expense_allocations(id,expense_id,user_id,amount)"))).toBe(true);
     expect(state.profiles).toEqual([{ id: currentUserId, displayName: "Andi", avatarUrl: null, isGuest: false, createdAt: "2026-08-11T00:00:00.000Z" }]);

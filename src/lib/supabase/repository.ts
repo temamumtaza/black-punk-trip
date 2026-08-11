@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "@/lib/supabase/database";
 import { allocationsReconcile } from "@/lib/finance";
-import type { AppState, Expense, MemberRole, Profile, Settlement, Trip, TripMember } from "@/lib/types";
+import type { AppState, Expense, MemberRole, NotificationPreference, Profile, Settlement, Trip, TripMember } from "@/lib/types";
 
 type Client = SupabaseClient<Database>;
 type ProfileRow = Database["public"]["Tables"]["profiles"]["Row"];
@@ -10,6 +10,7 @@ type TripMemberRow = Database["public"]["Tables"]["trip_members"]["Row"];
 type ExpenseRow = Database["public"]["Tables"]["expenses"]["Row"];
 type AllocationRow = Database["public"]["Tables"]["expense_allocations"]["Row"];
 type SettlementRow = Database["public"]["Tables"]["settlements"]["Row"];
+type NotificationPreferenceRow = Database["public"]["Tables"]["notification_preferences"]["Row"];
 type TripMemberWithProfileRow = TripMemberRow & { profiles: ProfileRow | null };
 type ExpenseWithAllocationsRow = ExpenseRow & { expense_allocations: AllocationRow[] | null };
 
@@ -39,6 +40,7 @@ function assertNoError(error: { message: string; code?: string } | null): assert
     "DUPLICATE_ALLOCATION", "ALLOCATION_MEMBER_NOT_IN_TRIP", "EXPENSE_NOT_FOUND", "EXPENSE_ACCESS_DENIED", "TRIP_NOT_FOUND",
     "TRIP_ALREADY_FINALIZED", "INVALID_TRIP_EXPENSES", "UNBALANCED_TRIP", "INVALID_SETTLEMENT", "SETTLEMENT_ACCESS_DENIED", "INVITE_NOT_FOUND",
     "ADMIN_REQUIRED", "OWNER_REQUIRED", "INVALID_TRIP_NAME", "INVALID_TRIP_DATES", "TRIP_NOT_FINALIZED", "SETTLEMENT_ALREADY_PAID", "MEMBER_NOT_FOUND", "MEMBER_HAS_ACTIVITY", "SELF_MEMBER_MANAGEMENT_FORBIDDEN", "INVALID_GUEST_NAME", "GUEST_NOT_FOUND", "GUEST_CANNOT_PAY", "GUEST_CANNOT_BE_ADMIN",
+    "INVALID_NOTIFICATION_PREFERENCE", "INVALID_NOTIFICATION_SNOOZE", "INVALID_PUSH_SUBSCRIPTION", "NOTIFICATION_NOT_FOUND",
   ];
   const code = knownCodes.find((candidate) => error.code === candidate || error.message.includes(candidate));
   const messages: Record<string, string> = {
@@ -78,6 +80,10 @@ function assertNoError(error: { message: string; code?: string } | null): assert
     GUEST_NOT_FOUND: "Anggota manual ini sudah tidak ada di trip.",
     GUEST_CANNOT_PAY: "Anggota manual tidak dapat dipilih sebagai pembayar.",
     GUEST_CANNOT_BE_ADMIN: "Anggota manual tidak dapat dijadikan admin.",
+    INVALID_NOTIFICATION_PREFERENCE: "Pilihan notifikasi belum valid.",
+    INVALID_NOTIFICATION_SNOOZE: "Waktu pengingat notifikasi belum valid.",
+    INVALID_PUSH_SUBSCRIPTION: "Perangkat ini belum berhasil didaftarkan untuk notifikasi.",
+    NOTIFICATION_NOT_FOUND: "Notifikasi tidak ditemukan.",
   };
   const infrastructureMessage = error.code === "57014"
     ? "Server terlalu lama memproses permintaan. Data belum berubah—coba lagi beberapa detik."
@@ -99,6 +105,14 @@ function assertNoError(error: { message: string; code?: string } | null): assert
 
 function mapProfile(row: ProfileRow): Profile {
   return { id: row.id, displayName: row.display_name, avatarUrl: row.avatar_url, isGuest: row.is_guest, createdAt: row.created_at };
+}
+
+function mapNotificationPreference(row?: NotificationPreferenceRow | null): NotificationPreference {
+  return {
+    promptState: row?.prompt_state ?? "prompt",
+    snoozeUntil: row?.snooze_until ?? null,
+    pushEnabled: row?.push_enabled ?? false,
+  };
 }
 
 function mapTrip(row: TripRow): Trip {
@@ -168,11 +182,13 @@ async function queryRows<T>(query: PromiseLike<{ data: T | null; error: { messag
 }
 
 export async function loadAppState(client: Client, currentUserId: string): Promise<AppState> {
-  const [profileResponse, memberRows] = await Promise.all([
+  const [profileResponse, memberRows, preferenceResponse] = await Promise.all([
     client.from("profiles").select(profileFields).eq("id", currentUserId).maybeSingle(),
     queryRows(client.from("trip_members").select(memberFields).eq("user_id", currentUserId)),
+    client.from("notification_preferences").select("user_id,prompt_state,snooze_until,push_enabled,updated_at").eq("user_id", currentUserId).maybeSingle(),
   ]);
   assertNoError(profileResponse.error);
+  assertNoError(preferenceResponse.error);
   if (!profileResponse.data) {
     throw new RepositoryError("Profil akun belum siap. Muat ulang beberapa detik lagi.", "PROFILE_NOT_FOUND");
   }
@@ -186,6 +202,7 @@ export async function loadAppState(client: Client, currentUserId: string): Promi
       tripMembers: [],
       expenses: [],
       settlements: [],
+      notificationPreference: mapNotificationPreference(preferenceResponse.data),
     };
   }
 
@@ -215,6 +232,7 @@ export async function loadAppState(client: Client, currentUserId: string): Promi
     tripMembers: allMemberRows.map(mapMember),
     expenses: expenseRows.map((expense) => mapExpense(expense, expense.expense_allocations ?? [])),
     settlements: settlementRows.map(mapSettlement),
+    notificationPreference: mapNotificationPreference(preferenceResponse.data),
   };
 }
 
@@ -344,6 +362,32 @@ export async function updateGuestMemberName(client: Client, tripId: string, user
   assertNoError(response.error);
   if (!response.data) throw new RepositoryError("Nama anggota manual belum berhasil diperbarui.");
   return mapProfile(response.data);
+}
+
+export async function updateNotificationPreference(
+  client: Client,
+  preference: Pick<NotificationPreference, "promptState" | "snoozeUntil" | "pushEnabled">,
+) {
+  const response = await client.rpc("update_notification_preference", {
+    p_prompt_state: preference.promptState,
+    p_snooze_until: preference.snoozeUntil,
+    p_push_enabled: preference.pushEnabled,
+  });
+  assertNoError(response.error);
+  if (!response.data) throw new RepositoryError("Preferensi notifikasi belum tersimpan.");
+  return mapNotificationPreference(response.data);
+}
+
+export async function upsertPushSubscription(client: Client, subscription: { endpoint: string; p256dh: string; auth: string; userAgent?: string | null }) {
+  const response = await client.rpc("upsert_push_subscription", {
+    p_endpoint: subscription.endpoint,
+    p_p256dh: subscription.p256dh,
+    p_auth: subscription.auth,
+    p_user_agent: subscription.userAgent ?? null,
+  });
+  assertNoError(response.error);
+  if (!response.data) throw new RepositoryError("Perangkat ini belum berhasil didaftarkan untuk notifikasi.", "INVALID_PUSH_SUBSCRIPTION");
+  return response.data;
 }
 
 export async function removeTripMember(client: Client, tripId: string, userId: string) {

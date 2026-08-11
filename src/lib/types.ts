@@ -2,6 +2,7 @@ export type TripStatus = "active" | "finalized";
 export type MemberRole = "admin" | "member";
 export type SplitType = "equal" | "selected_equal" | "custom";
 export type SettlementStatus = "pending" | "paid";
+export type NotificationPromptState = "prompt" | "snoozed" | "never" | "enabled" | "denied";
 export type ExpenseCategory =
   | "accommodation"
   | "food"
@@ -81,6 +82,13 @@ export interface AppState {
   tripMembers: TripMember[];
   expenses: Expense[];
   settlements: Settlement[];
+  notificationPreference: NotificationPreference;
+}
+
+export interface NotificationPreference {
+  promptState: NotificationPromptState;
+  snoozeUntil: string | null;
+  pushEnabled: boolean;
 }
 
 export interface MemberLedger {

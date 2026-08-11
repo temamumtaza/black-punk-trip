@@ -63,6 +63,43 @@ type SettlementRow = {
   created_at: string;
 };
 
+type NotificationPreferenceRow = {
+  user_id: string;
+  prompt_state: "prompt" | "snoozed" | "never" | "enabled" | "denied";
+  snooze_until: string | null;
+  push_enabled: boolean;
+  updated_at: string;
+};
+
+type PushSubscriptionRow = {
+  id: string;
+  user_id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  user_agent: string | null;
+  enabled: boolean;
+  last_seen_at: string;
+  created_at: string;
+};
+
+type NotificationEventRow = {
+  id: string;
+  recipient_user_id: string;
+  trip_id: string | null;
+  actor_id: string | null;
+  kind: string;
+  title: string;
+  body: string;
+  path: string;
+  dedupe_key: string;
+  read_at: string | null;
+  pushed_at: string | null;
+  push_attempts: number;
+  last_push_error: string | null;
+  created_at: string;
+};
+
 export type Database = {
   public: {
     Tables: {
@@ -100,6 +137,24 @@ export type Database = {
         Row: SettlementRow;
         Insert: Partial<SettlementRow> & Pick<SettlementRow, "trip_id" | "from_user_id" | "to_user_id" | "amount">;
         Update: Partial<SettlementRow>;
+        Relationships: [];
+      };
+      notification_preferences: {
+        Row: NotificationPreferenceRow;
+        Insert: Partial<NotificationPreferenceRow> & Pick<NotificationPreferenceRow, "user_id">;
+        Update: Partial<NotificationPreferenceRow>;
+        Relationships: [];
+      };
+      push_subscriptions: {
+        Row: PushSubscriptionRow;
+        Insert: Partial<PushSubscriptionRow> & Pick<PushSubscriptionRow, "user_id" | "endpoint" | "p256dh" | "auth">;
+        Update: Partial<PushSubscriptionRow>;
+        Relationships: [];
+      };
+      notification_events: {
+        Row: NotificationEventRow;
+        Insert: Partial<NotificationEventRow> & Pick<NotificationEventRow, "recipient_user_id" | "kind" | "title" | "body" | "path" | "dedupe_key">;
+        Update: Partial<NotificationEventRow>;
         Relationships: [];
       };
     };
@@ -145,6 +200,17 @@ export type Database = {
       update_guest_member_name: { Args: { p_trip_id: string; p_user_id: string; p_display_name: string }; Returns: ProfileRow };
       remove_trip_member: { Args: { p_trip_id: string; p_user_id: string }; Returns: undefined };
       mark_settlement_paid: { Args: { p_settlement_id: string }; Returns: SettlementRow };
+      update_notification_preference: {
+        Args: { p_prompt_state: "prompt" | "snoozed" | "never" | "enabled" | "denied"; p_snooze_until?: string | null; p_push_enabled?: boolean };
+        Returns: NotificationPreferenceRow;
+      };
+      upsert_push_subscription: {
+        Args: { p_endpoint: string; p_p256dh: string; p_auth: string; p_user_agent?: string | null };
+        Returns: PushSubscriptionRow;
+      };
+      remove_push_subscription: { Args: { p_endpoint: string }; Returns: undefined };
+      mark_notification_read: { Args: { p_notification_id: string }; Returns: NotificationEventRow };
+      create_due_trip_reminder_events: { Args: Record<string, never>; Returns: number };
     };
     Enums: {
       trip_status: "active" | "finalized";

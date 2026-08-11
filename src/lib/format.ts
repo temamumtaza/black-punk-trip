@@ -9,6 +9,23 @@ export const categoryLabels: Record<ExpenseCategory, string> = {
   other: "Lainnya",
 };
 
+const avatarPalette = ["#d7b9a5", "#b7cdd1", "#d0c6a8", "#b9c5aa"] as const;
+
+export function avatarColor(userId: string, userIds: string[] = []): string {
+  const orderedIds = [...new Set(userIds)].sort();
+  const memberIndex = orderedIds.indexOf(userId);
+  if (memberIndex >= 0) return avatarPalette[memberIndex % avatarPalette.length] ?? avatarPalette[0];
+
+  let hash = 1779033703 ^ userId.length;
+  for (let index = 0; index < userId.length; index += 1) {
+    hash = Math.imul(hash ^ userId.charCodeAt(index), 3432918353);
+    hash = (hash << 13) | (hash >>> 19);
+  }
+  hash = Math.imul(hash ^ (hash >>> 16), 2246822507);
+  hash = Math.imul(hash ^ (hash >>> 13), 3266489909);
+  return avatarPalette[((hash ^ (hash >>> 16)) >>> 0) % avatarPalette.length] ?? avatarPalette[0];
+}
+
 const rupiahFormatter = new Intl.NumberFormat("id-ID");
 
 function groupDigits(digits: string): string {
