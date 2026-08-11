@@ -9,15 +9,6 @@ export const categoryLabels: Record<ExpenseCategory, string> = {
   other: "Lainnya",
 };
 
-export const categorySymbols: Record<ExpenseCategory, string> = {
-  accommodation: "⌂",
-  food: "✦",
-  transport: "↗",
-  activity: "◌",
-  shopping: "□",
-  other: "·",
-};
-
 const rupiahFormatter = new Intl.NumberFormat("id-ID");
 
 function groupDigits(digits: string): string {

@@ -1,6 +1,7 @@
 "use client";
 
 import { Download, Smartphone } from "lucide-react";
+import Image from "next/image";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
@@ -113,7 +114,7 @@ export function PwaMobileGate({ children }: { children: ReactNode }) {
 
   return <main className="pwa-gate" aria-busy={access === "checking"}>
     <section className="pwa-gate-card" aria-labelledby="pwa-gate-title">
-      <span className="pwa-gate-mark" aria-hidden="true">BP</span>
+      <span className="pwa-gate-mark"><Image src="/brand/bp-logo.png" alt="" width={1024} height={1024} priority /></span>
       <p className="eyebrow">BLACK PUNK TRIP</p>
       <h1 id="pwa-gate-title">Buka sebagai aplikasi.</h1>
       <p className="pwa-gate-lede">Black Punk Trip di ponsel dibuat khusus untuk PWA agar sesi, notifikasi, dan tampilan layar penuh tetap konsisten.</p>

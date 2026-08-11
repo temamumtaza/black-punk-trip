@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { BanknoteArrowDown, ChevronDown, ClipboardList, Home, LogOut, Settings2, UsersRound } from "lucide-react";
 import { BrandMark } from "@/components/brand-mark";
 import type { Profile, Trip } from "@/lib/types";
@@ -49,7 +50,7 @@ export function TripShell({ trip, currentProfile, activeView, children, isAdmin,
       </aside>
       <div className="app-content">
         <header className="app-topbar">
-          <Link className="app-header-mark" href="/app?view=home" aria-label="Black Punk Trip, ringkasan">BP</Link>
+          <Link className="app-header-mark" href="/app?view=home" aria-label="Black Punk Trip, ringkasan"><Image src="/brand/bp-logo.png" alt="" width={1024} height={1024} priority /></Link>
           <button className="mobile-trip-switcher" type="button" onClick={() => onNavigate("trips")} aria-label="Kelola dan pindah trip"><span className="mobile-trip-name"><span>{trip.name}</span><small>{trip.status === "finalized" ? "Finalized" : "Aktif"}</small></span><ChevronDown size={15} aria-hidden="true" /></button>
           <div className="topbar-actions"><span className="sync-pill"><span className="status-dot" /> tersimpan</span><button className="icon-btn" type="button" aria-label="Pengaturan" onClick={() => onNavigate("settings")}><Settings2 size={17} /></button></div>
         </header>

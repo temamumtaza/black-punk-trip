@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown, Check, RefreshCw, WifiOff } from "lucide-react";
+import { ArrowDown, Check, LoaderCircle, WifiOff } from "lucide-react";
 import { type CSSProperties, type ReactNode, useRef, useState } from "react";
 
 interface PullToRefreshProps {
@@ -68,7 +68,7 @@ export function PullToRefresh({ children, onRefresh }: PullToRefreshProps) {
   const progress = Math.min(1, distance / threshold);
   const label = phase === "ready" ? "Lepaskan untuk memuat" : phase === "refreshing" ? "Memuat data terbaru…" : phase === "success" ? "Data sudah terbaru" : phase === "error" ? "Belum bisa memuat" : "Tarik untuk memuat";
   const laneHeight = phase === "pulling" || phase === "ready" ? Math.min(52, Math.round(distance * 0.72)) : active ? 52 : 0;
-  const Icon = phase === "success" ? Check : phase === "error" ? WifiOff : phase === "pulling" || phase === "ready" ? ArrowDown : RefreshCw;
+  const Icon = phase === "success" ? Check : phase === "error" ? WifiOff : phase === "refreshing" ? LoaderCircle : ArrowDown;
 
   return <div className={`pull-refresh-shell ${active ? "is-pulling" : ""}`} style={{ "--pull-space": `${laneHeight}px` } as CSSProperties} onTouchStart={(event) => {
     if (event.touches.length === 1 && isAtTop() && !refreshing && phase !== "success" && phase !== "error") startY.current = event.touches[0]?.clientY ?? null;

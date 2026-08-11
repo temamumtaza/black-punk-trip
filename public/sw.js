@@ -1,5 +1,5 @@
-const CACHE_NAME = "black-punk-trip-public-shell-v3";
-const SHELL_URLS = ["/offline.html", "/manifest.webmanifest", "/icons/icon-192.svg", "/icons/icon-512.svg"];
+const CACHE_NAME = "black-punk-trip-public-shell-v5";
+const SHELL_URLS = ["/offline.html", "/manifest.webmanifest", "/icons/bp-logo-192.png", "/icons/bp-logo-512.png", "/brand/bp-logo.png"];
 const IMMUTABLE_ASSET_PREFIX = "/_next/static/";
 const MAX_DYNAMIC_ASSETS = 100;
 

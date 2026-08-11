@@ -12,9 +12,11 @@ export function PwaRegister() {
     window.addEventListener("offline", update);
     const registerServiceWorker = () => {
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("/sw.js").catch(() => {
-          // PWA support remains progressive enhancement when registration is unavailable.
-        });
+        navigator.serviceWorker.register("/sw.js")
+          .then((registration) => registration.update())
+          .catch(() => {
+            // PWA support remains progressive enhancement when registration is unavailable.
+          });
       }
     };
     const registrationTimer = window.setTimeout(registerServiceWorker, 1200);

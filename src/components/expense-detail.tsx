@@ -4,9 +4,10 @@ import { ArrowLeft, ArrowUpRight, CalendarDays, FileText, Pencil, Trash2, UserRo
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { ExpenseCategoryIcon } from "@/components/expense-category-icon";
 import { Button } from "@/components/ui";
 import type { Expense, Profile, Trip } from "@/lib/types";
-import { categoryLabels, categorySymbols, formatRupiah, formatShortDate } from "@/lib/format";
+import { categoryLabels, formatRupiah, formatShortDate } from "@/lib/format";
 
 interface ExpenseDetailProps {
   expense: Expense;
@@ -79,7 +80,7 @@ export function ExpenseDetail({ expense, trip, profiles, currentUserId, canEdit,
       {canEdit && trip.status === "active" ? <div className="detail-actions"><Button variant="ghost" size="small" onClick={onEdit}><Pencil size={15} /> Edit</Button><Button variant="ghost" size="small" onClick={onDelete} disabled={isDeleting}><Trash2 size={15} /> {isDeleting ? "Menghapus…" : "Hapus"}</Button></div> : null}
     </div>
     <section className="detail-hero panel">
-      <div className="detail-symbol" aria-hidden="true">{categorySymbols[expense.category]}</div>
+      <div className="detail-symbol"><ExpenseCategoryIcon category={expense.category} size={22} strokeWidth={1.65} /></div>
       <p className="eyebrow">{categoryLabels[expense.category]} · {formatShortDate(expense.expenseDate)}</p>
       <h1>{expense.title}</h1>
       <div className="detail-amount">{formatRupiah(expense.amount)}</div>
