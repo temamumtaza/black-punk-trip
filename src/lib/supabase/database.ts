@@ -4,6 +4,7 @@ type ProfileRow = {
   id: string;
   display_name: string;
   avatar_url: string | null;
+  is_guest: boolean;
   created_at: string;
 };
 
@@ -108,6 +109,11 @@ export type Database = {
         Args: { p_name: string; p_description?: string | null; p_start_date?: string | null; p_end_date?: string | null };
         Returns: TripRow;
       };
+      update_owned_trip: {
+        Args: { p_trip_id: string; p_name: string; p_description?: string | null; p_start_date?: string | null; p_end_date?: string | null };
+        Returns: TripRow;
+      };
+      delete_owned_trip: { Args: { p_trip_id: string }; Returns: undefined };
       join_trip_by_invite: {
         Args: { p_invite_code: string };
         Returns: TripMemberRow;
@@ -135,6 +141,8 @@ export type Database = {
         Args: { p_trip_id: string; p_user_id: string; p_role: "admin" | "member" };
         Returns: TripMemberRow;
       };
+      create_guest_member: { Args: { p_trip_id: string; p_display_name: string }; Returns: ProfileRow };
+      update_guest_member_name: { Args: { p_trip_id: string; p_user_id: string; p_display_name: string }; Returns: ProfileRow };
       remove_trip_member: { Args: { p_trip_id: string; p_user_id: string }; Returns: undefined };
       mark_settlement_paid: { Args: { p_settlement_id: string }; Returns: SettlementRow };
     };

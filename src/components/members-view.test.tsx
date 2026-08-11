@@ -7,8 +7,8 @@ import type { MemberLedger, Profile, Trip, TripMember } from "@/lib/types";
 
 const trip: Trip = { id: "bali", name: "Bali bareng", description: null, coverUrl: null, startDate: null, endDate: null, inviteCode: "BALI2026", status: "active", createdBy: "andi", createdAt: "2026-08-01T00:00:00.000Z", finalizedAt: null };
 const profiles: Profile[] = [
-  { id: "andi", displayName: "Andi", avatarUrl: null, createdAt: "2026-08-01T00:00:00.000Z" },
-  { id: "budi", displayName: "Budi", avatarUrl: null, createdAt: "2026-08-01T00:00:00.000Z" },
+  { id: "andi", displayName: "Andi", avatarUrl: null, isGuest: false, createdAt: "2026-08-01T00:00:00.000Z" },
+  { id: "budi", displayName: "Budi", avatarUrl: null, isGuest: false, createdAt: "2026-08-01T00:00:00.000Z" },
 ];
 const members: TripMember[] = [
   { tripId: "bali", userId: "andi", role: "admin", joinedAt: "2026-08-01T00:00:00.000Z" },
@@ -22,8 +22,10 @@ const ledgers: MemberLedger[] = [
 function renderMembers(overrides: Partial<React.ComponentProps<typeof MembersView>> = {}) {
   const onChangeRole = vi.fn().mockResolvedValue(true);
   const onRemove = vi.fn().mockResolvedValue(true);
-  render(<MembersView trip={trip} profiles={profiles} members={members} ledgers={ledgers} currentUserId="andi" isAdmin pendingMemberId={null} onChangeRole={onChangeRole} onRemove={onRemove} {...overrides} />);
-  return { onChangeRole, onRemove };
+  const onCreateGuest = vi.fn().mockResolvedValue(true);
+  const onUpdateGuestName = vi.fn().mockResolvedValue(true);
+  render(<MembersView trip={trip} profiles={profiles} members={members} ledgers={ledgers} currentUserId="andi" isAdmin pendingMemberId={null} isCreatingGuest={false} onChangeRole={onChangeRole} onRemove={onRemove} onCreateGuest={onCreateGuest} onUpdateGuestName={onUpdateGuestName} {...overrides} />);
+  return { onChangeRole, onRemove, onCreateGuest, onUpdateGuestName };
 }
 
 describe("MembersView", () => {
@@ -47,6 +49,16 @@ describe("MembersView", () => {
     }));
   });
 
+  it("keeps the compact invitation controls below the member ledger", () => {
+    renderMembers();
+    const ledger = screen.getByText("Posisi anggota").closest("section");
+    const invite = screen.getByRole("heading", { name: "Undang teman" }).closest("section");
+    expect(ledger).toBeTruthy();
+    expect(invite).toBeTruthy();
+    expect(ledger!.compareDocumentPosition(invite!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByLabelText("Link undangan")).toBeNull();
+  });
+
   it("lets an admin change a different member role and remove that member", async () => {
     const { onChangeRole, onRemove } = renderMembers();
 
@@ -57,5 +69,14 @@ describe("MembersView", () => {
     fireEvent.click(screen.getByRole("button", { name: "Kelola" }));
     fireEvent.click(screen.getByRole("button", { name: "Keluarkan dari trip" }));
     await waitFor(() => expect(onRemove).toHaveBeenCalledWith(members[1]));
+  });
+
+  it("lets an admin add a manual member without giving that person an account", async () => {
+    const { onCreateGuest } = renderMembers();
+
+    fireEvent.change(screen.getByLabelText("Nama anggota manual"), { target: { value: "Deni" } });
+    fireEvent.click(screen.getByRole("button", { name: "Tambah tanpa akun" }));
+
+    await waitFor(() => expect(onCreateGuest).toHaveBeenCalledWith("Deni"));
   });
 });

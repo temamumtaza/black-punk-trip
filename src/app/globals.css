@@ -195,6 +195,12 @@ a { color: inherit; }
 .pwa-gate-footnote { margin: 22px 0 0; color: var(--muted); font-size: 10px; text-align: center; }
 
 .app-shell { display: flex; min-width: 0; min-height: 100svh; overflow-x: clip; touch-action: pan-y; }
+.pull-refresh-shell { min-width: 0; min-height: 100svh; overscroll-behavior-y: contain; }
+.pull-refresh-indicator { position: fixed; z-index: 4; top: 74px; left: calc(50% + 122px); display: grid; width: 31px; height: 31px; place-items: center; border: 1px solid var(--line); border-radius: 50%; background: var(--cream-bright); color: var(--muted); box-shadow: 0 6px 18px rgba(28, 28, 28, .12); opacity: 0; pointer-events: none; transition: opacity .14s ease, color .14s ease; }
+.pull-refresh-shell.is-pulling .pull-refresh-indicator { opacity: 1; }
+.pull-refresh-indicator.is-ready { color: var(--charcoal); border-color: var(--line-strong); }
+.pull-refresh-indicator .is-spinning { animation: pull-refresh-spin .72s linear infinite; }
+@keyframes pull-refresh-spin { to { transform: rotate(360deg); } }
 .app-rail { position: fixed; z-index: 3; display: flex; width: 245px; height: 100svh; flex-direction: column; padding: 24px 17px 18px; border-right: 1px solid var(--line); background: rgba(247, 244, 237, .96); }
 .rail-brand { padding: 0 9px 29px; }
 .trip-switcher { display: flex; width: 100%; align-items: center; gap: 9px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: rgba(252, 251, 248, .3); text-align: left; }
@@ -446,13 +452,24 @@ a { color: inherit; }
 .member-summary div:last-child { display: flex; flex-direction: column; gap: 3px; }
 .member-summary strong { font-size: 13px; font-weight: 400; }
 .member-summary span { color: var(--muted); font-size: 11px; }
-.invite-members-panel { background: #e7dfd2 !important; }
-.invite-members-panel > p:not(.invite-notice) { max-width: 440px; margin: 0 0 17px; color: var(--muted); font-size: 12px; }
-.invite-member-code { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 14px; border: 1px solid rgba(28, 28, 28, .22); border-radius: 8px; background: rgba(252, 251, 248, .27); }
-.invite-member-code > span { font-size: 23px; letter-spacing: .14em; }
-.invite-member-link { display: flex; align-items: center; gap: 8px; margin-top: 9px; }
-.invite-member-link .text-input { min-width: 0; flex: 1; }
-.invite-member-link .btn { flex: 0 0 auto; white-space: nowrap; }
+.manual-member-panel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, .82fr); align-items: end; gap: 16px 22px; margin-bottom: 18px; background: rgba(252, 251, 248, .24) !important; }
+.manual-member-panel h2 { margin: 5px 0 3px; font-size: 19px; font-weight: 400; }
+.manual-member-panel > div > p:not(.eyebrow) { max-width: 470px; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.manual-member-form { display: flex; align-items: center; gap: 8px; }
+.manual-member-form .text-input { min-width: 0; flex: 1; }
+.manual-member-form .btn { flex: 0 0 auto; white-space: nowrap; }
+.manual-member-panel > small { grid-column: 1 / -1; margin-top: -6px; color: var(--muted); font-size: 10px; line-height: 1.4; }
+.invite-members-panel { display: grid; min-width: 0; grid-template-columns: minmax(0, 1fr) auto; gap: 16px 24px; margin-top: 2px; background: rgba(252, 251, 248, .24) !important; }
+.invite-members-copy { min-width: 0; }
+.invite-members-panel h2 { margin: 5px 0 3px; font-size: 19px; font-weight: 400; }
+.invite-members-copy > p:not(.eyebrow) { max-width: 390px; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.invite-share-button { align-self: center; white-space: nowrap; }
+.invite-members-meta { display: flex; min-width: 0; grid-column: 1 / -1; align-items: center; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+.invite-members-meta > span { color: var(--muted); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; }
+.invite-members-meta > strong { font-size: 13px; font-weight: 400; letter-spacing: .12em; }
+.invite-members-meta > button { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; padding: 4px 0; border: 0; background: transparent; color: var(--muted); font-size: 11px; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px; }
+.invite-members-meta > button:hover, .invite-members-meta > button:focus-visible { color: var(--charcoal); text-decoration-color: currentColor; outline: 0; }
+.invite-members-panel .invite-notice { grid-column: 1 / -1; margin-top: -9px; }
 .members-panel-heading { display: flex; align-items: end; justify-content: space-between; gap: 14px; margin-bottom: 17px; }
 .members-panel-heading h2 { margin: 5px 0 0; font-size: 19px; font-weight: 400; }
 .members-panel-heading > small { display: inline-flex; align-items: center; gap: 5px; color: var(--muted); font-size: 10px; text-align: right; }
@@ -478,6 +495,8 @@ a { color: inherit; }
 .member-management-actions > p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
 .member-management-actions > div { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 11px; }
 .member-management-actions > small { display: block; margin-top: 11px; color: var(--muted); font-size: 10px; line-height: 1.4; }
+.guest-name-edit { display: flex; align-items: center; gap: 7px; }
+.guest-name-edit .text-input { min-width: 0; flex: 1; }
 .members-legend { display: flex; flex-wrap: wrap; gap: 15px; padding: 15px 18px 2px; color: var(--muted); font-size: 10px; }
 .legend-dot { display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: var(--muted); }
 .legend-dot.positive { background: var(--green); }
@@ -539,6 +558,21 @@ a { color: inherit; }
 .invite-notice { width: 100%; margin: -2px 0 0; color: var(--muted); font-size: 11px; line-height: 1.35; }
 .settings-actions { display: flex; align-items: end; gap: 9px; }
 .settings-actions .field { min-width: 250px; flex: 1; margin: 0; }
+.owner-trip-panel { grid-column: 1 / -1; }
+.owner-trip-copy { margin: 9px 0 0; color: var(--muted); font-size: 12px; }
+.owner-trip-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 18px; }
+.owner-trip-form .field:first-child, .owner-trip-form .field:nth-child(3), .owner-trip-actions, .owner-trip-danger { grid-column: 1 / -1; }
+.owner-trip-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.owner-trip-danger { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); }
+.owner-trip-danger > div { display: flex; flex-direction: column; gap: 3px; }
+.owner-trip-danger strong { font-size: 12px; font-weight: 400; }
+.owner-trip-danger span { max-width: 480px; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.single-date-picker { width: 100%; }
+.single-date-trigger { display: flex; width: 100%; min-height: 44px; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--muted); text-align: left; }
+.single-date-trigger:hover, .single-date-trigger:focus-visible { border-color: var(--line-strong); background: var(--wash); color: var(--charcoal); outline: 0; }
+.single-date-trigger:focus-visible { box-shadow: 0 0 0 2px var(--blue-ring); }
+.single-date-trigger strong { color: var(--charcoal); font-size: 12px; font-weight: 400; }
+.single-date-trigger:not(.has-value) strong { color: #92918b; }
 
 .trips-view .page-head { margin-bottom: 34px; }
 .trip-manager-summary { display: flex; justify-content: space-between; gap: 14px; margin: -16px 0 18px; color: var(--muted); font-size: 11px; }
@@ -585,6 +619,7 @@ a { color: inherit; }
   .story-section { padding: 95px 0 100px; }
   .app-rail { width: 208px; }
   .app-content { width: calc(100% - 208px); margin-left: 208px; }
+  .pull-refresh-indicator { left: calc(50% + 104px); }
   .app-topbar { left: 208px; padding-inline: 28px; }
   .app-main { width: min(100% - 56px, 700px); }
   .onboarding-entry-content { width: min(100%, 760px); }
@@ -597,6 +632,7 @@ a { color: inherit; }
   .settings-actions { align-items: stretch; flex-direction: column; }
   .settings-actions .field { min-width: 0; }
   .invite-notice { margin-top: -2px; }
+  .manual-member-panel { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 768px) {
@@ -644,6 +680,7 @@ a { color: inherit; }
   .auth-heading h1 { font-size: 46px; }
   .app-rail { display: none; }
   .app-content { width: 100%; margin-left: 0; padding: 61px 0 calc(65px + env(safe-area-inset-bottom)); }
+  .pull-refresh-indicator { top: 66px; left: 50%; }
   .app-topbar { left: 0; height: 61px; padding: 0 16px; }
   .mobile-trip-switcher, .mobile-trip-name { display: flex; }
   .app-header-mark { width: 27px; height: 27px; margin-right: 12px; }
@@ -711,9 +748,14 @@ a { color: inherit; }
   .ledger-number, .ledger-balance { display: flex; flex-direction: column; align-items: end; gap: 2px; font-size: 11px; }
   .ledger-number::before, .ledger-balance::before { color: var(--muted); content: attr(data-label); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
   .members-legend { gap: 7px 12px; padding-inline: 0; }
-  .invite-member-code > span { font-size: 21px; }
-  .invite-member-link { align-items: stretch; flex-direction: column; }
-  .invite-member-link .btn { align-self: flex-end; }
+  .manual-member-panel { display: flex; flex-direction: column; align-items: stretch; gap: 13px; margin-bottom: 12px; }
+  .manual-member-form { align-items: stretch; flex-direction: column; }
+  .manual-member-form .btn { width: 100%; justify-content: center; }
+  .invite-members-panel { display: flex; gap: 15px; }
+  .invite-share-button { width: 100%; justify-content: center; }
+  .invite-members-meta { width: 100%; gap: 7px; padding-top: 11px; }
+  .invite-members-meta > strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .invite-member-code { padding: 9px 10px; font-size: 12px; }
   .members-panel-heading { align-items: start; flex-direction: column; gap: 5px; }
   .members-panel-heading > small { text-align: left; }
   .member-management { justify-content: stretch; padding: 0 0 13px; }
@@ -721,7 +763,11 @@ a { color: inherit; }
   .member-management-actions { width: 100%; }
   .member-management-actions > div { flex-direction: column; }
   .member-management-actions .btn { width: 100%; justify-content: center; }
+  .guest-name-edit { align-items: stretch; flex-direction: column; }
   .settings-grid { gap: 12px; }
+  .owner-trip-form { grid-template-columns: 1fr; gap: 12px; }
+  .owner-trip-danger { align-items: stretch; flex-direction: column; }
+  .owner-trip-danger .btn { width: 100%; justify-content: center; }
   .trip-cards { grid-template-columns: 1fr; }
   .trip-card { min-height: 210px; }
   .trip-manager-summary { margin-top: -10px; }

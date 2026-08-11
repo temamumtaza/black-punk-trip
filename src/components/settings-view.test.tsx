@@ -21,8 +21,8 @@ const trip: Trip = {
 
 const inviteUrl = "http://localhost:3000/app?view=join-trip&code=BALI2026";
 
-function renderSettings() {
-  return render(<SettingsView trip={trip} creatorName="Andi" isAdmin onReview={vi.fn()} onManageTrips={vi.fn()} onSignOut={vi.fn()} />);
+function renderSettings(overrides: Partial<React.ComponentProps<typeof SettingsView>> = {}) {
+  return render(<SettingsView trip={trip} creatorName="Andi" isAdmin isOwner isSavingTrip={false} isDeletingTrip={false} onReview={vi.fn()} onManageTrips={vi.fn()} onSignOut={vi.fn()} onSaveTrip={vi.fn().mockResolvedValue(true)} onDeleteTrip={vi.fn().mockResolvedValue(undefined)} {...overrides} />);
 }
 
 describe("SettingsView invite actions", () => {
@@ -59,5 +59,15 @@ describe("SettingsView invite actions", () => {
       text: "Yuk gabung ke Bali bareng di Black Punk Trip. Catat dan bagi pengeluaran trip bareng.",
       url: inviteUrl,
     }));
+  });
+
+  it("only exposes permanent trip management to its owner", () => {
+    renderSettings();
+    expect(screen.getByRole("button", { name: "Edit" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Hapus trip" })).toBeTruthy();
+
+    cleanup();
+    renderSettings({ isOwner: false });
+    expect(screen.queryByRole("button", { name: "Hapus trip" })).toBeNull();
   });
 });

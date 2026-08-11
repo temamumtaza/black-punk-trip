@@ -6,8 +6,8 @@ import { ExpenseDetail } from "@/components/expense-detail";
 import type { Expense, Profile, Trip } from "@/lib/types";
 
 const profiles: Profile[] = [
-  { id: "andi", displayName: "Andi", createdAt: "2026-08-01T00:00:00.000Z" },
-  { id: "budi", displayName: "Budi", createdAt: "2026-08-01T00:00:00.000Z" },
+  { id: "andi", displayName: "Andi", isGuest: false, createdAt: "2026-08-01T00:00:00.000Z" },
+  { id: "budi", displayName: "Budi", isGuest: false, createdAt: "2026-08-01T00:00:00.000Z" },
 ];
 
 const trip: Trip = {

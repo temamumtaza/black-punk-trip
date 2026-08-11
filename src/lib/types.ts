@@ -14,6 +14,7 @@ export interface Profile {
   id: string;
   displayName: string;
   avatarUrl?: string | null;
+  isGuest: boolean;
   createdAt: string;
 }
 
@@ -94,4 +95,3 @@ export interface SettlementPreview {
   toUserId: string;
   amount: number;
 }
-

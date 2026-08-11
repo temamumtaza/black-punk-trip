@@ -7,6 +7,7 @@ import { ExpenseDetail } from "@/components/expense-detail";
 import { ExpenseForm } from "@/components/expense-form";
 import { ExpenseList } from "@/components/expense-list";
 import { MembersView } from "@/components/members-view";
+import { PullToRefresh } from "@/components/pull-to-refresh";
 import { SettingsView } from "@/components/settings-view";
 import { SettlementView } from "@/components/settlement-view";
 import { TripFormView } from "@/components/trip-form-view";
@@ -16,7 +17,9 @@ import { TripsView } from "@/components/trips-view";
 import { Button } from "@/components/ui";
 import { buildSettlementPreview, calculateMemberLedgers, validateTripExpenses } from "@/lib/finance";
 import {
+  createGuestMember,
   createTrip,
+  deleteOwnedTrip,
   deleteExpense,
   finalizeTrip,
   getReceiptUrl,
@@ -27,7 +30,9 @@ import {
   RepositoryError,
   saveExpense,
   updateTripMemberRole,
+  updateGuestMemberName,
   unlockTrip,
+  updateOwnedTrip,
   uploadReceipt,
 } from "@/lib/supabase/repository";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -70,6 +75,9 @@ export function TripApp({ initialView, initialUserId, initialTripId, initialJoin
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [pendingMemberId, setPendingMemberId] = useState<string | null>(null);
+  const [isCreatingGuest, setIsCreatingGuest] = useState(false);
+  const [isSavingTrip, setIsSavingTrip] = useState(false);
+  const [isDeletingTrip, setIsDeletingTrip] = useState(false);
   const loadInFlight = useRef<Promise<void> | null>(null);
   const initialUserIdRef = useRef(initialUserId ?? "");
 
@@ -315,6 +323,44 @@ export function TripApp({ initialView, initialUserId, initialTripId, initialJoin
     return removed;
   }
 
+  async function handleCreateGuestMember(displayName: string): Promise<boolean> {
+    if (!client || !trip || currentMember?.role !== "admin") {
+      setActionError("Hanya admin trip yang dapat menambah anggota manual.");
+      return false;
+    }
+    setIsCreatingGuest(true);
+    let created = false;
+    try {
+      await runAction(async () => {
+        await createGuestMember(client, trip.id, displayName);
+        await reload(trip.id);
+        created = true;
+      });
+    } finally {
+      setIsCreatingGuest(false);
+    }
+    return created;
+  }
+
+  async function handleUpdateGuestMemberName(member: TripMember, displayName: string): Promise<boolean> {
+    if (!client || !trip || currentMember?.role !== "admin") {
+      setActionError("Hanya admin trip yang dapat mengatur anggota manual.");
+      return false;
+    }
+    setPendingMemberId(member.userId);
+    let updated = false;
+    try {
+      await runAction(async () => {
+        await updateGuestMemberName(client, trip.id, member.userId, displayName);
+        await reload(trip.id);
+        updated = true;
+      });
+    } finally {
+      setPendingMemberId(null);
+    }
+    return updated;
+  }
+
   async function handleCreateTrip(input: { name: string; description: string; startDate: string; endDate: string }) {
     if (!client) return;
     await runAction(async () => {
@@ -330,6 +376,52 @@ export function TripApp({ initialView, initialUserId, initialTripId, initialJoin
       setActiveTripId(created.id);
       navigate("home", created.id);
     });
+  }
+
+  async function handleUpdateTrip(input: { name: string; description: string; startDate: string; endDate: string }): Promise<boolean> {
+    if (!client || !trip || trip.createdBy !== currentUserId) {
+      setActionError("Hanya pemilik trip yang dapat mengubah trip.");
+      return false;
+    }
+    setIsSavingTrip(true);
+    let saved = false;
+    try {
+      await runAction(async () => {
+        const updatedTrip = await updateOwnedTrip(client, trip.id, input);
+        updateAppState((current) => ({ ...current, trips: current.trips.map((item) => item.id === updatedTrip.id ? updatedTrip : item) }));
+        saved = true;
+      });
+    } finally {
+      setIsSavingTrip(false);
+    }
+    return saved;
+  }
+
+  async function handleDeleteTrip(): Promise<void> {
+    if (!client || !trip || trip.createdBy !== currentUserId) {
+      setActionError("Hanya pemilik trip yang dapat menghapus trip.");
+      return;
+    }
+    if (!window.confirm(`Hapus trip “${trip.name}”? Semua catatan, settlement, dan bukti pembayaran akan dihapus permanen.`)) return;
+    setIsDeletingTrip(true);
+    try {
+      await runAction(async () => {
+        await deleteOwnedTrip(client, trip.id);
+        updateAppState((current) => ({
+          ...current,
+          trips: current.trips.filter((item) => item.id !== trip.id),
+          tripMembers: current.tripMembers.filter((member) => member.tripId !== trip.id),
+          expenses: current.expenses.filter((expense) => expense.tripId !== trip.id),
+          settlements: current.settlements.filter((settlement) => settlement.tripId !== trip.id),
+        }));
+        setActiveTripId("");
+        setSelectedExpenseId(null);
+        navigate("trips", "");
+        await reload("");
+      });
+    } finally {
+      setIsDeletingTrip(false);
+    }
   }
 
   async function handleJoinTrip(code: string) {
@@ -461,23 +553,24 @@ export function TripApp({ initialView, initialUserId, initialTripId, initialJoin
   }
 
   const isAdmin = currentMember?.role === "admin";
+  const isOwner = trip.createdBy === currentUserId;
   const common = { trip, currentProfile, activeView: view, isAdmin, onNavigate: navigate, onSignOut: handleSignOut };
   if ((view === "detail" || view === "edit-expense") && !selectedExpense) {
-    return <TripShell {...common}><section className="panel missing-state"><p className="eyebrow">CATATAN TIDAK DITEMUKAN</p><h1>Talangan ini tidak tersedia.</h1><p>Catatan mungkin sudah dihapus atau kamu tidak punya akses ke trip tersebut.</p><Button variant="ghost" onClick={() => navigate("expenses")}>Kembali ke talangan</Button></section></TripShell>;
+    return <PullToRefresh onRefresh={() => reload()}><TripShell {...common}><section className="panel missing-state"><p className="eyebrow">CATATAN TIDAK DITEMUKAN</p><h1>Talangan ini tidak tersedia.</h1><p>Catatan mungkin sudah dihapus atau kamu tidak punya akses ke trip tersebut.</p><Button variant="ghost" onClick={() => navigate("expenses")}>Kembali ke talangan</Button></section></TripShell></PullToRefresh>;
   }
-  return <TripShell {...common}>
+  return <PullToRefresh onRefresh={() => reload()}><TripShell {...common}>
     {actionError ? <div className="app-alert" role="alert">{actionError}</div> : null}
     {view === "home" ? <TripHome trip={trip} profiles={profiles} expenses={expenses} ledger={ledgers} currentUserId={currentUserId} isAdmin={currentMember?.role === "admin"} onNavigate={navigate} onOpenExpense={(id) => { setSelectedExpenseId(id); navigate("detail", trip.id, id); }} /> : null}
     {view === "expenses" ? <ExpenseList expenses={expenses} profiles={profiles} onAdd={() => navigate("add-expense")} onOpen={(id) => { setSelectedExpenseId(id); navigate("detail", trip.id, id); }} /> : null}
-    {view === "members" ? <MembersView trip={trip} profiles={profiles} members={tripMembers} ledgers={ledgers} currentUserId={currentUserId} isAdmin={isAdmin} pendingMemberId={pendingMemberId} onChangeRole={handleChangeMemberRole} onRemove={handleRemoveMember} /> : null}
+    {view === "members" ? <MembersView trip={trip} profiles={profiles} members={tripMembers} ledgers={ledgers} currentUserId={currentUserId} isAdmin={isAdmin} pendingMemberId={pendingMemberId} isCreatingGuest={isCreatingGuest} onChangeRole={handleChangeMemberRole} onRemove={handleRemoveMember} onCreateGuest={handleCreateGuestMember} onUpdateGuestName={handleUpdateGuestMemberName} /> : null}
     {view === "settlement" || view === "review" ? <SettlementView trip={trip} profiles={profiles} ledgers={ledgers} preview={preview} settlements={settlements} validationErrors={validationErrors} currentUserId={currentUserId} isReview={view === "review" && isAdmin} isAdmin={isAdmin} pendingSettlementId={pendingSettlementId} isFinalizing={isFinalizing} isUnlocking={isUnlocking} onMarkPaid={handleMarkSettlementPaid} onFinalize={handleFinalizeTrip} onUnlock={handleUnlockTrip} /> : null}
-    {view === "settings" ? <SettingsView trip={trip} creatorName={creatorName} isAdmin={isAdmin} onReview={() => navigate("review")} onManageTrips={() => navigate("trips")} onSignOut={handleSignOut} /> : null}
+    {view === "settings" ? <SettingsView trip={trip} creatorName={creatorName} isAdmin={isAdmin} isOwner={isOwner} isSavingTrip={isSavingTrip} isDeletingTrip={isDeletingTrip} onReview={() => navigate("review")} onManageTrips={() => navigate("trips")} onSignOut={handleSignOut} onSaveTrip={handleUpdateTrip} onDeleteTrip={handleDeleteTrip} /> : null}
     {view === "add-expense" ? <ExpenseForm members={profiles} currentUserId={currentUserId} tripId={trip.id} locked={trip.status === "finalized"} onSubmit={handleSaveExpense} onUploadReceipt={handleUploadReceipt} onCancel={() => navigate("home")} /> : null}
     {view === "edit-expense" && selectedExpense ? <ExpenseForm members={profiles} currentUserId={currentUserId} tripId={trip.id} initialExpense={selectedExpense} locked={trip.status === "finalized" || (selectedExpense.createdBy !== currentUserId && currentMember?.role !== "admin")} onSubmit={handleSaveExpense} onUploadReceipt={handleUploadReceipt} onCancel={() => navigate("detail")} /> : null}
     {view === "detail" && selectedExpense ? <ExpenseDetail expense={selectedExpense} trip={trip} profiles={profiles} currentUserId={currentUserId} canEdit={selectedExpense.createdBy === currentUserId || currentMember?.role === "admin"} isDeleting={deletingExpenseId === selectedExpense.id} onBack={() => navigate("expenses")} onEdit={() => navigate("edit-expense")} onDelete={() => handleDeleteExpense(selectedExpense.id)} onGetReceiptUrl={handleGetReceiptUrl} /> : null}
     {view === "trips" ? <TripsView trips={state.trips} memberCountsByTrip={memberCountsByTrip} ledgersByTrip={ledgersByTrip} totalsByTrip={totalsByTrip} activeTripId={trip.id} onOpen={(tripId) => { setActiveTripId(tripId); navigate("home", tripId); }} onCreate={() => navigate("create-trip")} onJoin={() => navigate("join-trip")} /> : null}
     {view === "create-trip" || view === "join-trip" ? <TripFormView mode={view === "join-trip" ? "join" : "create"} initialCode={initialJoinCode} onBack={() => navigate("trips")} onCreate={handleCreateTrip} onJoin={handleJoinTrip} error={actionError} /> : null}
-  </TripShell>;
+  </TripShell></PullToRefresh>;
 }
 
 function AppLoading() {

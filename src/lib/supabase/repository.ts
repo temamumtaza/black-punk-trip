@@ -15,7 +15,7 @@ type ExpenseWithAllocationsRow = ExpenseRow & { expense_allocations: AllocationR
 
 const tripFields = "id,name,description,cover_url,start_date,end_date,invite_code,status,created_by,created_at,finalized_at";
 const expenseFields = "id,trip_id,title,notes,category,amount,expense_date,paid_by,created_by,split_type,receipt_url,created_at,updated_at";
-const profileFields = "id,display_name,avatar_url,created_at";
+const profileFields = "id,display_name,avatar_url,is_guest,created_at";
 const memberFields = "trip_id,user_id,role,joined_at";
 const allocationFields = "id,expense_id,user_id,amount";
 const settlementFields = "id,trip_id,from_user_id,to_user_id,amount,status,paid_at,created_at";
@@ -38,7 +38,7 @@ function assertNoError(error: { message: string; code?: string } | null): assert
     "INVALID_CATEGORY", "INVALID_RECEIPT", "PAYER_NOT_IN_TRIP", "INVALID_ALLOCATIONS", "ALLOCATIONS_DO_NOT_RECONCILE", "INVALID_ALLOCATION_AMOUNT",
     "DUPLICATE_ALLOCATION", "ALLOCATION_MEMBER_NOT_IN_TRIP", "EXPENSE_NOT_FOUND", "EXPENSE_ACCESS_DENIED", "TRIP_NOT_FOUND",
     "TRIP_ALREADY_FINALIZED", "INVALID_TRIP_EXPENSES", "UNBALANCED_TRIP", "INVALID_SETTLEMENT", "SETTLEMENT_ACCESS_DENIED", "INVITE_NOT_FOUND",
-    "ADMIN_REQUIRED", "TRIP_NOT_FINALIZED", "SETTLEMENT_ALREADY_PAID", "MEMBER_NOT_FOUND", "MEMBER_HAS_ACTIVITY", "SELF_MEMBER_MANAGEMENT_FORBIDDEN",
+    "ADMIN_REQUIRED", "OWNER_REQUIRED", "INVALID_TRIP_NAME", "INVALID_TRIP_DATES", "TRIP_NOT_FINALIZED", "SETTLEMENT_ALREADY_PAID", "MEMBER_NOT_FOUND", "MEMBER_HAS_ACTIVITY", "SELF_MEMBER_MANAGEMENT_FORBIDDEN", "INVALID_GUEST_NAME", "GUEST_NOT_FOUND", "GUEST_CANNOT_PAY", "GUEST_CANNOT_BE_ADMIN",
   ];
   const code = knownCodes.find((candidate) => error.code === candidate || error.message.includes(candidate));
   const messages: Record<string, string> = {
@@ -66,11 +66,18 @@ function assertNoError(error: { message: string; code?: string } | null): assert
     SETTLEMENT_ACCESS_DENIED: "Kamu tidak punya izin menandai pembayaran ini.",
     INVITE_NOT_FOUND: "Kode gabung tidak ditemukan atau trip sudah ditutup.",
     ADMIN_REQUIRED: "Hanya admin trip yang dapat melakukan aksi ini.",
+    OWNER_REQUIRED: "Hanya pemilik trip yang dapat mengubah atau menghapus trip.",
+    INVALID_TRIP_NAME: "Nama trip harus berisi 1–120 karakter.",
+    INVALID_TRIP_DATES: "Tanggal selesai tidak boleh sebelum tanggal mulai.",
     TRIP_NOT_FINALIZED: "Trip belum difinalisasi.",
     SETTLEMENT_ALREADY_PAID: "Trip tidak bisa dibuka kembali karena sudah ada transfer yang ditandai lunas.",
     MEMBER_NOT_FOUND: "Anggota ini sudah tidak ada di trip.",
     MEMBER_HAS_ACTIVITY: "Anggota ini punya catatan atau pembagian aktif. Bereskan catatan tersebut sebelum mengeluarkannya.",
     SELF_MEMBER_MANAGEMENT_FORBIDDEN: "Admin tidak dapat mengubah atau mengeluarkan dirinya sendiri.",
+    INVALID_GUEST_NAME: "Nama anggota manual harus berisi 1–80 karakter.",
+    GUEST_NOT_FOUND: "Anggota manual ini sudah tidak ada di trip.",
+    GUEST_CANNOT_PAY: "Anggota manual tidak dapat dipilih sebagai pembayar.",
+    GUEST_CANNOT_BE_ADMIN: "Anggota manual tidak dapat dijadikan admin.",
   };
   const infrastructureMessage = error.code === "57014"
     ? "Server terlalu lama memproses permintaan. Data belum berubah—coba lagi beberapa detik."
@@ -89,7 +96,7 @@ function assertNoError(error: { message: string; code?: string } | null): assert
 }
 
 function mapProfile(row: ProfileRow): Profile {
-  return { id: row.id, displayName: row.display_name, avatarUrl: row.avatar_url, createdAt: row.created_at };
+  return { id: row.id, displayName: row.display_name, avatarUrl: row.avatar_url, isGuest: row.is_guest, createdAt: row.created_at };
 }
 
 function mapTrip(row: TripRow): Trip {
@@ -221,6 +228,24 @@ export async function createTrip(client: Client, input: { name: string; descript
   return mapTrip(response.data);
 }
 
+export async function updateOwnedTrip(client: Client, tripId: string, input: { name: string; description: string; startDate: string; endDate: string }) {
+  const response = await client.rpc("update_owned_trip", {
+    p_trip_id: tripId,
+    p_name: input.name.trim(),
+    p_description: input.description.trim() || null,
+    p_start_date: input.startDate || null,
+    p_end_date: input.endDate || null,
+  });
+  assertNoError(response.error);
+  if (!response.data) throw new RepositoryError("Trip belum berhasil diperbarui.");
+  return mapTrip(response.data);
+}
+
+export async function deleteOwnedTrip(client: Client, tripId: string) {
+  const response = await client.rpc("delete_owned_trip", { p_trip_id: tripId });
+  assertNoError(response.error);
+}
+
 export async function joinTrip(client: Client, inviteCode: string) {
   const response = await client.rpc("join_trip_by_invite", { p_invite_code: inviteCode.trim().toUpperCase() });
   assertNoError(response.error);
@@ -283,6 +308,20 @@ export async function updateTripMemberRole(client: Client, tripId: string, userI
   assertNoError(response.error);
   if (!response.data) throw new RepositoryError("Peran anggota belum berhasil diperbarui.");
   return mapMember(response.data);
+}
+
+export async function createGuestMember(client: Client, tripId: string, displayName: string) {
+  const response = await client.rpc("create_guest_member", { p_trip_id: tripId, p_display_name: displayName.trim() });
+  assertNoError(response.error);
+  if (!response.data) throw new RepositoryError("Anggota manual belum berhasil ditambahkan.");
+  return mapProfile(response.data);
+}
+
+export async function updateGuestMemberName(client: Client, tripId: string, userId: string, displayName: string) {
+  const response = await client.rpc("update_guest_member_name", { p_trip_id: tripId, p_user_id: userId, p_display_name: displayName.trim() });
+  assertNoError(response.error);
+  if (!response.data) throw new RepositoryError("Nama anggota manual belum berhasil diperbarui.");
+  return mapProfile(response.data);
 }
 
 export async function removeTripMember(client: Client, tripId: string, userId: string) {
